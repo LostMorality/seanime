@@ -50,7 +50,7 @@ import React, { useState } from "react"
 import { HiFastForward } from "react-icons/hi"
 import { ImFileText } from "react-icons/im"
 import { IoCaretForwardCircleOutline } from "react-icons/io5"
-import { LuChevronUp, LuHeading, LuPaintbrush, LuPalette, LuSettings, LuSettings2, LuSparkles, LuTvMinimalPlay, LuVolume2 } from "react-icons/lu"
+import { LuChevronUp, LuHeading, LuPaintbrush, LuPalette, LuSettings, LuSettings2, LuSparkles, LuSun, LuTvMinimalPlay, LuVolume2 } from "react-icons/lu"
 import { MdOutlineAccessTime, MdOutlineSubtitles, MdSpeed } from "react-icons/md"
 import { RiShadowLine } from "react-icons/ri"
 import { TbArrowForwardUp } from "react-icons/tb"
@@ -95,6 +95,12 @@ export const SUBTITLE_STYLES_BACK_COLOR_OPACITY_OPTIONS = [
     { label: "50%", value: 150 },
     { label: "25%", value: 200 },
     { label: "0%", value: 255 },
+]
+
+const VIDEO_ENHANCEMENT_SLIDERS: { key: "contrast" | "saturation" | "brightness", label: string, min: number, max: number }[] = [
+    { key: "contrast", label: "Contrast", min: 0.8, max: 1.2 },
+    { key: "saturation", label: "Saturation", min: 0.8, max: 1.3 },
+    { key: "brightness", label: "Brightness", min: 0.9, max: 1.1 },
 ]
 
 export const vc_subtitleStylesDefaults: VideoCoreSettings["subtitleCustomization"] = {
@@ -315,6 +321,10 @@ export function VideoCoreSettingsMenu() {
         mediaCaptionsManager?.updateSettings(newSettings)
     }
 
+    const handleVideoEnhancementChange = (videoEnhancement: VideoCoreSettings["videoEnhancement"]): void => {
+        setSettings({ ...settings, videoEnhancement })
+    }
+
     if (isMiniPlayer) return null
 
     return (
@@ -351,6 +361,7 @@ export function VideoCoreSettingsMenu() {
                     <VideoCoreMenuOption title="Auto Next" icon={HiFastForward} value={autoNext ? "On" : "Off"} />
                     <VideoCoreMenuOption title="Skip OP/ED" icon={TbArrowForwardUp} value={autoSkipOPED ? "On" : "Off"} />
                     <VideoCoreMenuOption title="Anime4K" icon={LuSparkles} value={currentAnime4kOption?.label || "Off"} />
+                    <VideoCoreMenuOption title="Video Enhancement" icon={LuSun} value={beautifyImage ? "On" : "Off"} />
                     {(subtitleManager || mediaCaptionsManager) && <VideoCoreMenuOption
                         title="Subtitle Delay"
                         icon={MdOutlineAccessTime}
@@ -659,6 +670,52 @@ export function VideoCoreSettingsMenu() {
                             value={anime4kOption}
                         />
                     </VideoCoreMenuOption>
+                    <VideoCoreMenuOption title="Video Enhancement" icon={LuSun}>
+                        <p className="text-[--muted] text-sm mb-2">
+                            Applies a contrast, saturation and brightness filter on top of the video. Turn it off to see the video exactly as encoded.
+                        </p>
+                        <Switch
+                            label="Enabled"
+                            side="right"
+                            fieldClass="hover:bg-transparent hover:border-transparent px-0 ml-0 w-full"
+                            size="sm"
+                            value={beautifyImage}
+                            onValueChange={setBeautifyImage}
+                        />
+                        {VIDEO_ENHANCEMENT_SLIDERS.map(({ key, label, min, max }) => (
+                            <div key={key} className={beautifyImage ? "mt-3" : "mt-3 opacity-50"}>
+                                <div className="flex justify-between text-sm select-none">
+                                    <span>{label}</span>
+                                    <span>
+                                        {settings.videoEnhancement[key].toFixed(2)}
+                                        <span className="text-[--muted]"> (default {vc_initialSettings.videoEnhancement[key].toFixed(2)})</span>
+                                    </span>
+                                </div>
+                                <Slider
+                                    className="mt-1"
+                                    aria-label={label}
+                                    value={[settings.videoEnhancement[key]]}
+                                    defaultValue={[vc_initialSettings.videoEnhancement[key]]}
+                                    min={min}
+                                    max={max}
+                                    step={0.01}
+                                    disabled={!beautifyImage}
+                                    onValueChange={(v) => handleVideoEnhancementChange({ ...settings.videoEnhancement, enabled: true, [key]: v[0] })}
+                                />
+                            </div>
+                        ))}
+                        <div className="flex gap-1.5 items-center mt-3">
+                            <Button
+                                className="px-1 !text-xs flex-1"
+                                intent="gray-subtle"
+                                size="sm"
+                                disabled={!beautifyImage}
+                                onClick={() => handleVideoEnhancementChange(vc_initialSettings.videoEnhancement)}
+                            >
+                                Reset to defaults
+                            </Button>
+                        </div>
+                    </VideoCoreMenuOption>
                     <VideoCoreMenuOption title="Player Appearance" icon={LuPaintbrush}>
                         <Switch
                             label="Show Chapter Markers"
@@ -675,14 +732,6 @@ export function VideoCoreSettingsMenu() {
                             size="sm"
                             value={highlightOPEDChapters}
                             onValueChange={setHighlightOPEDChapters}
-                        />
-                        <Switch
-                            label="Increase Saturation"
-                            side="right"
-                            fieldClass="hover:bg-transparent hover:border-transparent px-0 ml-0 w-full"
-                            size="sm"
-                            value={beautifyImage}
-                            onValueChange={setBeautifyImage}
                         />
                     </VideoCoreMenuOption>
                 </VideoCoreMenuSubmenuBody>
