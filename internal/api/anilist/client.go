@@ -588,6 +588,10 @@ func (ac *AnilistClientImpl) customDoFunc(ctx context.Context, req *http.Request
 		}
 	}()
 
+	if err = sharedAniListPacer.Wait(req.Context(), sleepWithContext); err != nil {
+		return err
+	}
+
 	var resp *http.Response
 	resp, rlRemainingStr, err = doAniListRequestWithRetries(
 		alHttpClient(),
@@ -601,6 +605,7 @@ func (ac *AnilistClientImpl) customDoFunc(ctx context.Context, req *http.Request
 	if err != nil {
 		return err
 	}
+	sharedAniListPacer.Observe(resp.Header)
 
 	defer resp.Body.Close()
 
