@@ -39,7 +39,7 @@ export function isAnimeLibraryItemsOnly(items: Nullish<Models_HomeItem[]>) {
 type HomeItemSchema = {
     name: string
     kind: ("row" | "header")[]
-    options?: { label: string, name: string, type: string, options?: any[] }[]
+    options?: { label: string, name: string, type: string, options?: any[], min?: number, max?: number }[]
     schemaVersion: number
     description?: string
 }
@@ -312,6 +312,50 @@ export const HOME_ITEMS = {
                 label: "Custom list name (Optional)",
                 type: "text",
                 name: "customListName",
+            },
+        ],
+    },
+    "recent-list-activity": {
+        name: "Recent List Activity",
+        kind: ["row"],
+        schemaVersion: 1,
+        description: "Display what you recently added to Planning, completed, or updated on your lists.",
+        options: [
+            {
+                label: "Show",
+                name: "show",
+                type: "select",
+                options: [
+                    { label: "Recently added to Planning", value: "planning-added" },
+                    { label: "Recently completed", value: "completed" },
+                    { label: "Recently added (any list)", value: "added" },
+                    { label: "Recently updated", value: "updated" },
+                ],
+            },
+            {
+                label: "Type",
+                name: "type",
+                type: "select",
+                options: [
+                    { label: "Anime", value: "anime" },
+                    { label: "Manga", value: "manga" },
+                ],
+            },
+            {
+                label: "Number of entries",
+                name: "limit",
+                type: "number",
+                min: 5,
+                max: 50,
+            },
+            {
+                label: "Layout",
+                name: "layout",
+                type: "select",
+                options: [
+                    { label: "Carousel", value: "carousel" },
+                    { label: "Grid", value: "grid" },
+                ],
             },
         ],
     },

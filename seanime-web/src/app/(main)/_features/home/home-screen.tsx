@@ -1,7 +1,7 @@
 import { AL_ListRecentAnime_Page_AiringSchedules, Anime_ScheduleItem, Models_HomeItem } from "@/api/generated/types"
-import { useAnilistListAnime, useAnilistListRecentAiringAnime } from "@/api/hooks/anilist.hooks"
+import { useAnilistListAnime, useAnilistListRecentAiringAnime, useGetRawAnimeCollection } from "@/api/hooks/anilist.hooks"
 import { useGetLibraryCollection } from "@/api/hooks/anime_collection.hooks"
-import { useAnilistListManga } from "@/api/hooks/manga.hooks"
+import { useAnilistListManga, useGetRawAnilistMangaCollection } from "@/api/hooks/manga.hooks"
 import { useGetHomeItems } from "@/api/hooks/status.hooks"
 import { __anilist_userAnimeMediaAtom } from "@/app/(main)/_atoms/anilist.atoms"
 import { LibraryHeader } from "@/app/(main)/_features/anime-library/_components/library-header"
@@ -524,6 +524,10 @@ export function HomeScreenItem(props: HomeScreenItemProps) {
         )
     }
 
+    if (item.type === "recent-list-activity") {
+        return <RecentListActivity item={item} />
+    }
+
     if (item.type === "my-lists") {
         return (
             <>
@@ -980,6 +984,63 @@ function MyLists(props: { item: Models_HomeItem }) {
                     <AnilistAnimeEntryList type={item.options?.type ?? "anime"} layout={item.options?.layout} list={list} />
                 </div> : null
             })}
+        </PageWrapper>
+    )
+}
+
+const RECENT_LIST_ACTIVITY_TITLES: Record<string, string> = {
+    "planning-added": "Recently added to Planning",
+    "completed": "Recently completed",
+    "added": "Recently added",
+    "updated": "Recently updated",
+}
+
+function RecentListActivity(props: { item: Models_HomeItem }) {
+    const { item } = props
+    const show: string = item.options?.show || "planning-added"
+    const type: "anime" | "manga" = item.options?.type || "anime"
+    const limit: number = item.options?.limit || 20
+
+    // Read the collections directly so filters on the My Lists page don't affect this row
+    const { data: animeData } = useGetRawAnimeCollection()
+    const { data: mangaData } = useGetRawAnilistMangaCollection()
+
+    const list = React.useMemo(() => {
+        const lists = (type === "anime" ? animeData : mangaData)?.MediaListCollection?.lists ?? []
+        let entries = lists.filter(l => !l?.isCustomList).flatMap(l => l?.entries ?? []).filter(Boolean)
+        if (show === "planning-added") entries = entries.filter(e => e?.status === "PLANNING")
+        if (show === "completed") entries = entries.filter(e => e?.status === "COMPLETED")
+
+        const sortKey = (e: typeof entries[number]) => {
+            if (show === "completed") {
+                const d = e?.completedAt
+                // Entries without a completion date fall back to when they were last updated
+                if (d?.year) return new Date(d.year, (d.month || 1) - 1, d.day || 1).getTime() / 1000
+                return e?.updatedAt ?? 0
+            }
+            if (show === "updated") return e?.updatedAt ?? 0
+            return e?.createdAt ?? 0
+        }
+
+        const seen = new Set<number>()
+        entries = entries
+            .toSorted((a, b) => sortKey(b) - sortKey(a))
+            .filter(e => {
+                const id = e?.media?.id
+                if (!id || seen.has(id)) return false
+                seen.add(id)
+                return true
+            })
+            .slice(0, limit)
+        return { name: RECENT_LIST_ACTIVITY_TITLES[show], entries }
+    }, [animeData, mangaData, type, show, limit])
+
+    if (!list.entries.length) return null
+
+    return (
+        <PageWrapper className="space-y-6 px-4" data-recent-list-activity={show}>
+            <h2>{RECENT_LIST_ACTIVITY_TITLES[show] ?? "Recent list activity"}</h2>
+            <AnilistAnimeEntryList type={type} layout={item.options?.layout || "carousel"} list={list as any} />
         </PageWrapper>
     )
 }
