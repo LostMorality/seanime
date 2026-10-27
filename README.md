@@ -42,15 +42,17 @@ This is my fork of [Seanime](https://github.com/5rahim/seanime). It isn't an off
 
 | Area | Change |
 |---|---|
-| Discover | **Hide watched** and **Also hide Planning** switches (on by default), a genre filter on every row, and a **Recommended for You** row based on the genres you watch and how you score them |
+| Discover | **Hide watched** and **Also hide Planning** switches (on by default), a genre filter on every row, and a **Recommended for You** row based on the genres you watch and how you score them, leaning towards shows people are watching now instead of only old classics |
 | Anime pages | Recommendations skip anime you've already seen and fetch more from AniList when most of the top 8 are hidden |
 | Anime pages | A Steam-style gallery in the banner: every trailer and PV for the show (from MyAnimeList, not just AniList's one), then its artwork, then it settles on the banner image. Videos are muted with sound while your mouse is over the header, and everything fades in and out. Hover the header for **◀ ▶** to skip, **Sound on** (stays on), **Play again**, and **Trailers**, which opens a window with every trailer listed, picking up where the banner was, plus **Fullscreen**. It pauses when you scroll away or switch apps. Settings can make it the main trailer only, put it below the episodes, make it click-to-play, or turn it off |
+| Manga pages | Recommendations skip manga you're reading or have read (same Hide watched / Planning switches) |
 | Anime cards | A **新エピソード / NEW EPISODE** sash across the cover of airing shows you're watching when an episode you haven't seen is out |
 | Anime cards | Right-click the **+** (Add to list) button to add as Watching, Planning, Completed, Paused or Dropped. A normal click still adds as Planning |
 | My Lists | **Date added (oldest first)** sort |
 | Home | **Recent List Activity** row: recently added to Planning, recently completed, recently added, or recently updated |
 | Player | **Video Enhancement** menu with contrast, saturation and brightness sliders, and the settings now carry into picture-in-picture |
 | Player | Volume boost up to 300% for VideoCore and MpvCore, with Shift+Up / Shift+Down. **Merged upstream** in [#964](https://github.com/5rahim/seanime/pull/964) |
+| AniList | Requests slow down on their own when AniList's per-minute limit is nearly used up, instead of hitting it and getting blocked for a minute. Plugins that call AniList go through the same pacing |
 | Plugins | Characters info+ only looks a character up when you hover it, instead of every character on page load, which cuts down on AniList rate limiting. **Merged** in [PR #39](https://github.com/Seanime-contributions/Seanime-Providers/pull/39) |
 
 The new options are in **Settings › UI** (NEW EPISODE sash, trailer mode), on the Discover page itself, and in **Home › settings** for the new row.
