@@ -1,5 +1,6 @@
 import { AL_MediaListStatus } from "@/api/generated/types"
 import { useGetAnimeCollection } from "@/api/hooks/anilist.hooks"
+import { useGetRawAnilistMangaCollection } from "@/api/hooks/manga.hooks"
 import { PrimitiveAtom } from "jotai"
 import { atomWithStorage } from "jotai/utils"
 import { useAtomValue } from "jotai/react"
@@ -38,22 +39,29 @@ export function useDiscoverPerPage() {
  */
 export function useDiscoverListIds() {
     const { data: animeCollection } = useGetAnimeCollection()
+    return React.useMemo(() => groupListIds(animeCollection), [animeCollection])
+}
 
-    return React.useMemo(() => {
-        const watched = new Set<number>()
-        const planning = new Set<number>()
-        const all = new Set<number>()
-        for (const list of animeCollection?.MediaListCollection?.lists ?? []) {
-            for (const entry of list?.entries ?? []) {
-                const id = entry?.media?.id
-                if (!id) continue
-                all.add(id)
-                if (entry.status === "PLANNING") planning.add(id)
-                else if (entry.status && WATCHED_STATUSES.includes(entry.status)) watched.add(id)
-            }
+type ListCollectionLike = {
+    MediaListCollection?: {
+        lists?: ({ entries?: ({ status?: AL_MediaListStatus, media?: { id: number } } | null | undefined)[] } | null | undefined)[]
+    }
+} | undefined
+
+function groupListIds(collection: ListCollectionLike) {
+    const watched = new Set<number>()
+    const planning = new Set<number>()
+    const all = new Set<number>()
+    for (const list of collection?.MediaListCollection?.lists ?? []) {
+        for (const entry of list?.entries ?? []) {
+            const id = entry?.media?.id
+            if (!id) continue
+            all.add(id)
+            if (entry.status === "PLANNING") planning.add(id)
+            else if (entry.status && WATCHED_STATUSES.includes(entry.status)) watched.add(id)
         }
-        return { watched, planning, all, isLoaded: !!animeCollection }
-    }, [animeCollection])
+    }
+    return { watched, planning, all, isLoaded: !!collection }
 }
 
 /**
@@ -61,9 +69,22 @@ export function useDiscoverListIds() {
  * Pass `genres` for rows whose data isn't already queried by genre.
  */
 export function useDiscoverMediaFilter() {
+    const { watched, planning } = useDiscoverListIds()
+    return useListFilter(watched, planning)
+}
+
+/**
+ * Same as useDiscoverMediaFilter, for manga: drops manga being read or already read (and Planning) per the same switches.
+ */
+export function useMangaListMediaFilter() {
+    const { data: mangaCollection } = useGetRawAnilistMangaCollection()
+    const { watched, planning } = React.useMemo(() => groupListIds(mangaCollection as ListCollectionLike), [mangaCollection])
+    return useListFilter(watched, planning)
+}
+
+function useListFilter(watched: Set<number>, planning: Set<number>) {
     const hideWatched = useAtomValue(__discover_hideWatchedAtom)
     const hidePlanning = useAtomValue(__discover_hidePlanningAtom)
-    const { watched, planning } = useDiscoverListIds()
 
     return React.useCallback(<T extends MediaLike>(media: (T | null | undefined)[] | undefined, genres?: string[]): T[] => {
         return (media ?? []).filter((m): m is T => {
