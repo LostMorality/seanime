@@ -7,6 +7,8 @@ import React from "react"
 
 const PROFILE_GENRE_COUNT = 3
 const MAX_RESULTS = 20
+// Shows older than this get no freshness boost
+const FRESHNESS_YEARS = 12
 
 type GenreProfile = {
     weights: Map<string, number>
@@ -46,7 +48,7 @@ function buildGenreProfile(collection: AL_AnimeCollection | undefined): GenrePro
 }
 
 /**
- * Popular, well-rated anime in the user's favorite genres that aren't on their list yet.
+ * Well-rated anime in the user's favorite genres that aren't on their list yet, leaning towards newer shows.
  * Uses one AniList request; everything else comes from the cached anime collection.
  */
 export function useDiscoverRecommendedAnime(ref: React.RefObject<HTMLElement | null>) {
@@ -61,7 +63,8 @@ export function useDiscoverRecommendedAnime(ref: React.RefObject<HTMLElement | n
     const { data, isLoading } = useAnilistListAnime({
         page: 1,
         perPage: 50,
-        sort: ["POPULARITY_DESC"],
+        // What people are watching now, so the pool isn't only all-time classics
+        sort: ["TRENDING_DESC", "POPULARITY_DESC"],
         status: ["RELEASING", "FINISHED"],
         averageScore_greater: 70,
         genres,
@@ -70,9 +73,12 @@ export function useDiscoverRecommendedAnime(ref: React.RefObject<HTMLElement | n
 
     const media = React.useMemo(() => {
         const maxWeight = Math.max(1, ...profile.weights.values())
+        const thisYear = new Date().getFullYear()
         const rank = (m: AL_BaseAnime) => {
             const genreFit = (m.genres ?? []).reduce((sum, g) => sum + Math.max(0, profile.weights.get(g) ?? 0), 0) / maxWeight
-            return genreFit * 0.6 + ((m.meanScore ?? 0) / 100) * 0.4
+            const year = m.startDate?.year ?? m.seasonYear ?? thisYear - FRESHNESS_YEARS
+            const freshness = Math.min(1, Math.max(0, 1 - (thisYear - year) / FRESHNESS_YEARS))
+            return genreFit * 0.5 + ((m.meanScore ?? 0) / 100) * 0.3 + freshness * 0.2
         }
         return (data?.Page?.media ?? [])
             .filter((m): m is AL_BaseAnime => !!m && !onListIds.has(m.id))
