@@ -6,9 +6,12 @@ import { Button } from "@/components/ui/button"
 import { cn } from "@/components/ui/core/styling"
 import { defineSchema, Field, Form } from "@/components/ui/form"
 import { RadioGroup } from "@/components/ui/radio-group"
+import { Select } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ANIME_COLLECTION_SORTING_OPTIONS, CONTINUE_WATCHING_SORTING_OPTIONS, MANGA_COLLECTION_SORTING_OPTIONS } from "@/lib/helpers/filtering"
+import { __entry_trailerModeAtom, ENTRY_TRAILER_MODE_OPTIONS, EntryTrailerMode } from "@/app/(main)/entry/_components/entry-trailer-section"
+import { __ui_newEpisodeStampAtom } from "@/app/(main)/_features/anime/_containers/anime-entry-card-new-episode-stamp"
 import { __navigationPreloadModeAtom, NavigationPreloadMode } from "@/lib/navigation-preload-settings"
 import { THEME_COLOR_BANK } from "@/lib/theme/theme-bank"
 import {
@@ -327,6 +330,8 @@ export function UISettings() {
     const { mutate, isPending } = useUpdateTheme()
     // const [fixBorderRenderingArtifacts, setFixBorerRenderingArtifacts] = useAtom(__ui_fixBorderRenderingArtifacts)
     const [navigationPreloadMode, setNavigationPreloadMode] = useAtom(__navigationPreloadModeAtom)
+    const [newEpisodeStamp, setNewEpisodeStamp] = useAtom(__ui_newEpisodeStampAtom)
+    const [entryTrailerMode, setEntryTrailerMode] = useAtom(__entry_trailerModeAtom)
     const [enableLivePreview, setEnableLivePreview] = useState(false)
     const isSimulatedUser = useIsSimulatedUser()
 
@@ -813,6 +818,14 @@ export function UISettings() {
 
                             <SettingsCard title="Tweaks">
 
+                                <Select
+                                    label="Trailer on anime pages"
+                                    help="Trailers play with captions on. English captions are used when the video has them."
+                                    value={entryTrailerMode}
+                                    onValueChange={v => setEntryTrailerMode(v as EntryTrailerMode)}
+                                    options={ENTRY_TRAILER_MODE_OPTIONS}
+                                />
+
                                 <RadioGroup
                                     label="Navigation preloading"
                                     value={isSimulatedUser ? "disable" : navigationPreloadMode}
@@ -926,6 +939,21 @@ export function UISettings() {
                                         "Anime card unwatched count",
                                     )}
                                     name="showAnimeUnwatchedCount"
+                                />
+
+                                <Switch
+                                    side="right"
+                                    label={swLabel(
+                                        <SwThumb>
+                                            <div className="absolute inset-0 bg-gradient-to-br from-gray-800/80 to-gray-950" />
+                                            <div className="absolute bottom-0.5 right-0.5 rounded-[2px] px-0.5 bg-gradient-to-br from-rose-600 to-orange-500">
+                                                <span className="text-[5px] text-white leading-none font-bold">新</span>
+                                            </div>
+                                        </SwThumb>,
+                                        "\"New episode\" stamp on airing anime you're watching",
+                                    )}
+                                    value={newEpisodeStamp}
+                                    onValueChange={setNewEpisodeStamp}
                                 />
 
                                 <Field.Switch
