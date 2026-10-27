@@ -7,6 +7,7 @@ import { SeaImage } from "@/components/shared/sea-image"
 import { Button, IconButton } from "@/components/ui/button"
 import { cn } from "@/components/ui/core/styling"
 import { Disclosure, DisclosureContent, DisclosureItem, DisclosureTrigger } from "@/components/ui/disclosure"
+import { DropdownMenu, DropdownMenuItem, DropdownMenuLabel } from "@/components/ui/dropdown-menu"
 import { defineSchema, Field, Form } from "@/components/ui/form"
 import { Modal, ModalProps } from "@/components/ui/modal"
 import { NumberInput } from "@/components/ui/number-input"
@@ -132,33 +133,35 @@ export const AnilistMediaEntryModal = (props: AnilistMediaEntryModalProps) => {
     }, [repeat, listData?.repeat, media?.id, type, mutate, mutateRepeat])
 
 
+    const addWithStatus = React.useCallback((status: AL_MediaListStatus) => {
+        // Airing anime have no episode count yet, so use the last aired episode
+        const anime = media as AL_BaseAnime
+        const total = type === "anime"
+            ? (anime?.episodes || (anime?.nextAiringEpisode?.episode ? anime.nextAiringEpisode.episode - 1 : 0))
+            : (media as AL_BaseManga)?.chapters
+        mutate({
+            mediaId: media?.id || 0,
+            status: status,
+            score: 0,
+            progress: status === "COMPLETED" ? (total || 0) : 0,
+            startedAt: undefined,
+            completedAt: undefined,
+            type: type,
+        })
+    }, [media, type, mutate])
+
     if (!user) return null
 
     return (
         <>
             {!hideButton && <>
-                {(!listData) && <Tooltip
-                    trigger={<IconButton
-                        data-anilist-media-entry-modal-add-button
-                        intent="gray-subtle"
-                        icon={<BiPlus />}
-                        rounded
-                        size="sm"
-                        loading={isEditing || isDeleting}
-                        className={cn({ "hidden": isSuccess })} // Hide button when mutation is successful
-                        onClick={() => mutate({
-                            mediaId: media?.id || 0,
-                            status: "PLANNING",
-                            score: 0,
-                            progress: 0,
-                            startedAt: undefined,
-                            completedAt: undefined,
-                            type: type,
-                        })}
-                    />}
-                >
-                    Add to list
-                </Tooltip>}
+                {(!listData) && <AddToListButton
+                    media={media}
+                    type={type}
+                    loading={isEditing || isDeleting}
+                    hidden={isSuccess}
+                    onAdd={addWithStatus}
+                />}
             </>}
 
             {!!listData && <IsomorphicPopover
@@ -198,6 +201,75 @@ export const AnilistMediaEntryModal = (props: AnilistMediaEntryModalProps) => {
         </>
     )
 
+}
+
+/**
+ * Left click adds the entry as Planning, right click opens a menu to pick the status.
+ */
+function AddToListButton({ media, type, loading, hidden, onAdd }: {
+    media?: AL_BaseAnime | AL_BaseManga
+    type: "anime" | "manga"
+    loading: boolean
+    hidden: boolean
+    onAdd: (status: AL_MediaListStatus) => void
+}) {
+    const [menuOpen, setMenuOpen] = React.useState(false)
+    const notReleased = media?.status === "NOT_YET_RELEASED"
+
+    const statuses: { value: AL_MediaListStatus, label: string }[] = notReleased
+        ? [{ value: "PLANNING", label: "Planning" }]
+        : [
+            { value: "CURRENT", label: type === "anime" ? "Watching" : "Reading" },
+            { value: "PLANNING", label: "Planning" },
+            { value: "COMPLETED", label: "Completed" },
+            { value: "PAUSED", label: "Paused" },
+            { value: "DROPPED", label: "Dropped" },
+        ]
+
+    return (
+        <DropdownMenu
+            open={menuOpen}
+            onOpenChange={setMenuOpen}
+            // A modal menu blocks pointer events on the page, which closes the card's hover popup and the menu with it
+            allowOutsideInteraction
+            className="min-w-[10rem]"
+            trigger={<span
+                className={cn("inline-block", { "hidden": hidden })} // Hide button when mutation is successful
+                // The menu only opens on right click, left click adds as Planning
+                onPointerDown={e => e.preventDefault()}
+                onContextMenu={e => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    setMenuOpen(true)
+                }}
+            >
+                <Tooltip
+                    trigger={<IconButton
+                        data-anilist-media-entry-modal-add-button
+                        intent="gray-subtle"
+                        icon={<BiPlus />}
+                        rounded
+                        size="sm"
+                        loading={loading}
+                        onClick={() => onAdd("PLANNING")}
+                    />}
+                >
+                    Add to list (right click for status)
+                </Tooltip>
+            </span>}
+        >
+            <DropdownMenuLabel>Add to list as</DropdownMenuLabel>
+            {statuses.map(s => (
+                <DropdownMenuItem
+                    key={s.value}
+                    data-anilist-media-entry-modal-add-status={s.value}
+                    onClick={() => onAdd(s.value)}
+                >
+                    {s.label}
+                </DropdownMenuItem>
+            ))}
+        </DropdownMenu>
+    )
 }
 
 function Content(props: AnilistMediaEntryModalProps & {
