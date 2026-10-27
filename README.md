@@ -45,7 +45,7 @@ This is my fork of [Seanime](https://github.com/5rahim/seanime). It isn't an off
 | Discover | **Hide watched** and **Also hide Planning** switches (on by default), a genre filter on every row, and a **Recommended for You** row based on the genres you watch and how you score them |
 | Anime pages | Recommendations skip anime you've already seen and fetch more from AniList when most of the top 8 are hidden |
 | Anime pages | The trailer plays in the banner, Steam-style: muted, sound while your mouse is over the header, then it fades back to the banner image when it ends. It can also go below the episodes, be click-to-play, or be turned off |
-| Anime cards | A **最新話 / NEW EPISODE** sash across the cover of airing shows you're watching when an episode you haven't seen is out |
+| Anime cards | A **新エピソード / NEW EPISODE** sash across the cover of airing shows you're watching when an episode you haven't seen is out |
 | Anime cards | Right-click the **+** (Add to list) button to add as Watching, Planning, Completed, Paused or Dropped. A normal click still adds as Planning |
 | My Lists | **Date added (oldest first)** sort |
 | Home | **Recent List Activity** row: recently added to Planning, recently completed, recently added, or recently updated |
@@ -64,23 +64,23 @@ Sent upstream: [#994](https://github.com/5rahim/seanime/issues/994) (Video Enhan
 
 **Trailer in the banner**
 
-<img src="https://raw.githubusercontent.com/LostMorality/seanime/9d23fe281272a01c92874dd3afc7d3e03aecc443/shots/banner-trailer.png" width="900" alt="Trailer playing in the anime page banner">
+<img src="https://raw.githubusercontent.com/LostMorality/seanime/5c54faf0ed79ce12ea0431c28ceb78fca91f5a39/shots/banner-trailer.png" width="900" alt="Trailer playing in the anime page banner">
 
 **Discover filters and Recommended for You**
 
-<img src="https://raw.githubusercontent.com/LostMorality/seanime/9d23fe281272a01c92874dd3afc7d3e03aecc443/shots/discover-filters-recommended.png" width="900" alt="Discover filter bar and Recommended for You row">
+<img src="https://raw.githubusercontent.com/LostMorality/seanime/5c54faf0ed79ce12ea0431c28ceb78fca91f5a39/shots/discover-filters-recommended.png" width="900" alt="Discover filter bar and Recommended for You row">
 
 <table>
 <tr>
-<td align="center"><b>NEW EPISODE sash</b><br><br><img src="https://raw.githubusercontent.com/LostMorality/seanime/9d23fe281272a01c92874dd3afc7d3e03aecc443/shots/new-episode-sash.png" width="220" alt="NEW EPISODE sash on an anime card"></td>
-<td align="center"><b>Right-click Add to list</b><br><br><img src="https://raw.githubusercontent.com/LostMorality/seanime/9d23fe281272a01c92874dd3afc7d3e03aecc443/shots/add-to-list-menu.png" width="220" alt="Add to list status menu"></td>
-<td align="center"><b>Video Enhancement</b><br><br><img src="https://raw.githubusercontent.com/LostMorality/seanime/9d23fe281272a01c92874dd3afc7d3e03aecc443/shots/video-enhancement-menu.png" width="220" alt="Video Enhancement settings menu"></td>
+<td align="center"><b>NEW EPISODE sash</b><br><br><img src="https://raw.githubusercontent.com/LostMorality/seanime/5c54faf0ed79ce12ea0431c28ceb78fca91f5a39/shots/new-episode-sash.png" width="220" alt="NEW EPISODE sash on an anime card"></td>
+<td align="center"><b>Right-click Add to list</b><br><br><img src="https://raw.githubusercontent.com/LostMorality/seanime/5c54faf0ed79ce12ea0431c28ceb78fca91f5a39/shots/add-to-list-menu.png" width="220" alt="Add to list status menu"></td>
+<td align="center"><b>Video Enhancement</b><br><br><img src="https://raw.githubusercontent.com/LostMorality/seanime/5c54faf0ed79ce12ea0431c28ceb78fca91f5a39/shots/video-enhancement-menu.png" width="220" alt="Video Enhancement settings menu"></td>
 </tr>
 </table>
 
 **Recommendations that skip what you've seen**
 
-<img src="https://raw.githubusercontent.com/LostMorality/seanime/9d23fe281272a01c92874dd3afc7d3e03aecc443/shots/entry-recommendations.png" width="420" alt="Recommendations section with only unwatched anime">
+<img src="https://raw.githubusercontent.com/LostMorality/seanime/5c54faf0ed79ce12ea0431c28ceb78fca91f5a39/shots/entry-recommendations.png" width="420" alt="Recommendations section with only unwatched anime">
 
 </details>
 
