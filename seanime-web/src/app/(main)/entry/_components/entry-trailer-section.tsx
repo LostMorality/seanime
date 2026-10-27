@@ -1,11 +1,16 @@
 import { AL_BaseAnime } from "@/api/generated/types"
 import { useElectronYoutubeEmbed } from "@/app/(main)/_electron/electron-embed"
+import { Button } from "@/components/ui/button"
 import { cn } from "@/components/ui/core/styling"
+import { Modal } from "@/components/ui/modal"
+import { Tooltip } from "@/components/ui/tooltip"
 import { __isElectronDesktop__ } from "@/types/constants"
 import { useAtomValue } from "jotai/react"
 import { atomWithStorage } from "jotai/utils"
 import React from "react"
+import { createPortal } from "react-dom"
 import { FaPlay } from "react-icons/fa"
+import { LuMaximize, LuMaximize2, LuRotateCcw, LuVolume2, LuVolumeX } from "react-icons/lu"
 
 export type EntryTrailerMode = "banner" | "muted" | "click" | "off"
 
@@ -150,42 +155,112 @@ export function EntryTrailerSection({ media }: { media: AL_BaseAnime | undefined
     )
 }
 
+type BannerPhase = "loading" | "playing" | "fading" | "ended"
+
+// How the banner trailer's sound behaves: follow the mouse, or forced on/off with the speaker button
+type BannerSound = "hover" | "on" | "off"
+
+const BANNER_FADE_MS = 1200
+
+/**
+ * Sends a YouTube player command to an Electron webview (through the local player page) or a plain iframe.
+ */
+function sendPlayerCommand(player: any, func: string, args: unknown[] = []) {
+    if (!player) return
+    if (__isElectronDesktop__) {
+        player.executeJavaScript?.(`window.__yt && window.__yt(${JSON.stringify(func)}, ${JSON.stringify(args)})`).catch(() => {})
+    } else {
+        player.contentWindow?.postMessage(JSON.stringify({ event: "command", func, args }), "*")
+    }
+}
+
 /**
  * Plays the trailer in the anime page banner, the way store pages show a video before the images.
- * It starts muted, has sound while the mouse is over the header, and fades back to the banner image when it ends.
+ * It fades in muted, has sound while the mouse is over the header, and fades back to the banner image near the end.
+ * A small control bar lets you turn the sound on or off, replay it, or open it in a window with fullscreen.
  */
 export function EntryBannerTrailer({ media }: { media: AL_BaseAnime | undefined }) {
     const mode = useAtomValue(__entry_trailerModeAtom)
     const { electronEmbedAddress } = useElectronYoutubeEmbed()
     const rootRef = React.useRef<HTMLDivElement>(null)
     const playerRef = React.useRef<any>(null)
+    const [headerEl, setHeaderEl] = React.useState<Element | null>(null)
     const [size, setSize] = React.useState({ width: 0, height: 0 })
-    const [loaded, setLoaded] = React.useState(false)
-    const [ended, setEnded] = React.useState(false)
-    const hoveredRef = React.useRef(false)
+    const [phase, setPhase] = React.useState<BannerPhase>("loading")
+    const [playKey, setPlayKey] = React.useState(0)
+    const [progress, setProgress] = React.useState({ time: 0, duration: 0 })
+    const [sound, setSound] = React.useState<BannerSound>("hover")
+    const [hovered, setHovered] = React.useState(false)
+    const [scrolledAway, setScrolledAway] = React.useState(false)
+    const [pageHidden, setPageHidden] = React.useState(false)
+    const [windowOpen, setWindowOpen] = React.useState(false)
+    const [windowStart, setWindowStart] = React.useState(0)
+    const volumeTimerRef = React.useRef<number | undefined>(undefined)
 
     const trailerId = media?.trailer?.site === "youtube" ? media?.trailer?.id : undefined
     const enabled = mode === "banner" && !!trailerId && (!__isElectronDesktop__ || !!electronEmbedAddress)
+    const audible = phase === "playing" && (sound === "on" || (sound === "hover" && hovered))
 
     React.useEffect(() => {
-        setLoaded(false)
-        setEnded(false)
+        setPhase("loading")
+        setProgress({ time: 0, duration: 0 })
+        setSound("hover")
     }, [trailerId])
 
-    const command = React.useCallback((func: string) => {
-        const player = playerRef.current
-        if (!player) return
-        if (__isElectronDesktop__) {
-            player.executeJavaScript?.(`window.__yt && window.__yt(${JSON.stringify(func)})`).catch(() => {})
+    const command = React.useCallback((func: string, args: unknown[] = []) => sendPlayerCommand(playerRef.current, func, args), [])
+
+    // Volume ramps instead of switching sound on and off abruptly
+    const rampVolume = React.useCallback((from: number, to: number, ms: number, onDone?: () => void) => {
+        window.clearInterval(volumeTimerRef.current)
+        const steps = 10
+        let step = 0
+        volumeTimerRef.current = window.setInterval(() => {
+            step++
+            command("setVolume", [Math.round(from + (to - from) * (step / steps))])
+            if (step >= steps) {
+                window.clearInterval(volumeTimerRef.current)
+                onDone?.()
+            }
+        }, ms / steps)
+    }, [command])
+
+    React.useEffect(() => () => window.clearInterval(volumeTimerRef.current), [])
+
+    React.useEffect(() => {
+        if (phase === "loading") return
+        if (audible) {
+            command("setVolume", [0])
+            command("unMute")
+            rampVolume(0, 100, 600)
         } else {
-            player.contentWindow?.postMessage(JSON.stringify({ event: "command", func, args: [] }), "*")
+            rampVolume(100, 0, 400, () => command("mute"))
         }
-    }, [])
+    }, [audible])
+
+    // Pause while the banner is scrolled away, the app is hidden, or the trailer window is open
+    const shouldPlay = phase === "playing" && !scrolledAway && !pageHidden && !windowOpen
+    React.useEffect(() => {
+        if (phase === "loading" || phase === "ended") return
+        command(shouldPlay ? "playVideo" : "pauseVideo")
+    }, [shouldPlay])
+
+    React.useEffect(() => {
+        if (!enabled) return
+        const onScroll = () => setScrolledAway(window.scrollY > 300)
+        const onVisibility = () => setPageHidden(document.hidden)
+        window.addEventListener("scroll", onScroll, { passive: true })
+        document.addEventListener("visibilitychange", onVisibility)
+        return () => {
+            window.removeEventListener("scroll", onScroll)
+            document.removeEventListener("visibilitychange", onVisibility)
+        }
+    }, [enabled])
 
     // Cover the banner the way object-fit: cover would
     React.useEffect(() => {
         const el = rootRef.current
         if (!el) return
+        setHeaderEl(el.closest("[data-media-page-header]"))
         const observer = new ResizeObserver(([entry]) => {
             const { width, height } = entry.contentRect
             setSize(width / height > 16 / 9 ? { width, height: width * 9 / 16 } : { width: height * 16 / 9, height })
@@ -194,86 +269,284 @@ export function EntryBannerTrailer({ media }: { media: AL_BaseAnime | undefined 
         return () => observer.disconnect()
     }, [enabled])
 
-    // Sound while the mouse is over the header. The player itself doesn't pass mouse events to the page,
-    // but the header's text and gradients sit on top of it.
+    // The player itself doesn't pass mouse events to the page, but the header's text and gradients sit on top of it
     React.useEffect(() => {
-        const header = rootRef.current?.closest("[data-media-page-header]")
-        if (!header || !enabled) return
-        const onEnter = () => {
-            hoveredRef.current = true
-            command("unMute")
-        }
-        const onLeave = () => {
-            hoveredRef.current = false
-            command("mute")
-        }
-        header.addEventListener("mouseenter", onEnter)
-        header.addEventListener("mouseleave", onLeave)
+        if (!headerEl || !enabled) return
+        const onEnter = () => setHovered(true)
+        const onLeave = () => setHovered(false)
+        headerEl.addEventListener("mouseenter", onEnter)
+        headerEl.addEventListener("mouseleave", onLeave)
         return () => {
-            header.removeEventListener("mouseenter", onEnter)
-            header.removeEventListener("mouseleave", onLeave)
+            headerEl.removeEventListener("mouseenter", onEnter)
+            headerEl.removeEventListener("mouseleave", onLeave)
         }
-    }, [enabled, command])
+    }, [headerEl, enabled])
 
-    // Electron: watch for the load and for the end of the video (state 0)
+    const fadeOut = React.useCallback(() => {
+        setPhase(p => (p === "playing" || p === "loading") ? "fading" : p)
+    }, [])
+
+    React.useEffect(() => {
+        if (phase !== "fading") return
+        const timer = window.setTimeout(() => setPhase("ended"), BANNER_FADE_MS)
+        return () => window.clearTimeout(timer)
+    }, [phase])
+
+    // Applies a [state, time, duration] report from the player
+    const onPlayerReport = React.useCallback((state: number, time: number, duration: number) => {
+        if (duration > 0) setProgress({ time, duration })
+        // Fade out a little before the end so it never sits on YouTube's end screen
+        if (state === 0 || (duration > 0 && time >= duration - 1.6)) fadeOut()
+    }, [fadeOut])
+
+    // Electron: the local player page keeps the YouTube state in window variables
     React.useEffect(() => {
         const player = playerRef.current
         if (!enabled || !player || !__isElectronDesktop__) return
-        const onLoad = () => {
-            window.setTimeout(() => {
-                setLoaded(true)
-                if (hoveredRef.current) command("unMute")
-            }, 1200)
-        }
+        const onLoad = () => window.setTimeout(() => setPhase(p => p === "loading" ? "playing" : p), 1200)
         player.addEventListener("did-finish-load", onLoad)
         const interval = window.setInterval(() => {
-            player.executeJavaScript?.("window.__ytState")
-                .then((state: number) => {
-                    if (state === 0) setEnded(true)
+            player.executeJavaScript?.("JSON.stringify([window.__ytState, window.__ytTime, window.__ytDur])")
+                .then((json: string) => {
+                    const [state, time, duration] = JSON.parse(json) as [number, number, number]
+                    onPlayerReport(state, time, duration)
                 })
                 .catch(() => {})
-        }, 1000)
+        }, 500)
         return () => {
             player.removeEventListener("did-finish-load", onLoad)
             window.clearInterval(interval)
         }
         // The player is only rendered once the banner size is known
-    }, [enabled, command, trailerId, size.width > 0])
+    }, [enabled, trailerId, playKey, size.width > 0, onPlayerReport])
 
-    if (!enabled || ended) return null
+    // Browser: listen to the iframe's own messages
+    React.useEffect(() => {
+        if (!enabled || __isElectronDesktop__) return
+        const onMessage = (e: MessageEvent) => {
+            if (e.source !== playerRef.current?.contentWindow) return
+            try {
+                const d = JSON.parse(e.data) as { event?: string, info?: any }
+                if (d.event === "onStateChange") onPlayerReport(d.info, progress.time, progress.duration)
+                else if (d.info) onPlayerReport(d.info.playerState ?? -1, d.info.currentTime ?? 0, d.info.duration ?? 0)
+            }
+            catch {
+            }
+        }
+        window.addEventListener("message", onMessage)
+        return () => window.removeEventListener("message", onMessage)
+    }, [enabled, onPlayerReport, progress.time, progress.duration])
 
+    const onIframeLoad = () => {
+        playerRef.current?.contentWindow?.postMessage(JSON.stringify({ event: "listening", id: 1, channel: "widget" }), "*")
+        window.setTimeout(() => setPhase(p => p === "loading" ? "playing" : p), 1200)
+    }
+
+    const replay = () => {
+        setProgress({ time: 0, duration: 0 })
+        setPhase("loading")
+        setPlayKey(k => k + 1)
+    }
+
+    const openWindow = () => {
+        setWindowStart(phase === "ended" ? 0 : Math.floor(progress.time))
+        setWindowOpen(true)
+        // The banner goes back to its image while the full trailer plays
+        fadeOut()
+    }
+
+    if (!enabled) return null
+
+    const showVideo = phase !== "ended"
     const webUrl = `https://www.youtube-nocookie.com/embed/${trailerId}?autoplay=1&controls=0&mute=1&disablekb=1&iv_load_policy=3&cc_load_policy=1&cc_lang_pref=en&hl=en&rel=0&playsinline=1&enablejsapi=1`
 
-    return (
+    const controls = (
         <div
-            ref={rootRef}
-            data-entry-banner-trailer
+            data-entry-banner-trailer-controls
             className={cn(
-                "absolute inset-0 z-[1] overflow-hidden pointer-events-none transition-opacity duration-1000",
-                loaded ? "opacity-100" : "opacity-0",
+                "absolute right-6 top-14 z-[6] hidden lg:flex items-center gap-0.5 rounded-full",
+                "bg-black/45 backdrop-blur-md border border-white/10 shadow-lg px-1 py-1 overflow-hidden",
+                "transition-opacity duration-500",
+                phase === "loading" ? "opacity-0 pointer-events-none" : "opacity-100",
             )}
         >
-            {size.width > 0 && <div
-                className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
-                style={{ width: size.width, height: size.height }}
+            {phase !== "ended" && <BannerTrailerButton
+                label={sound === "on" ? "Mute" : "Sound on"}
+                onClick={() => setSound(s => s === "on" ? "off" : "on")}
             >
-                {__isElectronDesktop__
-                    ? <webview
-                        ref={playerRef}
-                        src={`${electronEmbedAddress}hero_${trailerId}`}
-                        style={{ width: "100%", height: "100%" }}
-                    />
-                    : <iframe
-                        ref={playerRef}
-                        {...({ credentialless: "true" } as any)}
-                        src={webUrl}
-                        title="Trailer"
-                        className="w-full h-full"
-                        allow="autoplay; encrypted-media"
-                        referrerPolicy="strict-origin-when-cross-origin"
-                        onLoad={() => window.setTimeout(() => setLoaded(true), 1200)}
-                    />}
+                {audible ? <LuVolume2 /> : <LuVolumeX />}
+            </BannerTrailerButton>}
+            {phase === "ended" && <BannerTrailerButton label="Replay trailer" onClick={replay}>
+                <LuRotateCcw />
+            </BannerTrailerButton>}
+            <BannerTrailerButton label="Watch trailer" onClick={openWindow} wide>
+                <LuMaximize2 /><span className="text-xs font-semibold tracking-wide">Trailer</span>
+            </BannerTrailerButton>
+            {(phase === "playing" || phase === "fading") && progress.duration > 0 && <div
+                className="absolute left-3 right-3 bottom-0 h-[2px] rounded-full bg-white/15 overflow-hidden"
+            >
+                <div
+                    className="h-full bg-white/80 transition-[width] duration-500 ease-linear"
+                    style={{ width: `${Math.min(100, (progress.time / progress.duration) * 100)}%` }}
+                />
             </div>}
         </div>
     )
+
+    return (
+        <>
+            <div
+                ref={rootRef}
+                data-entry-banner-trailer={phase}
+                className={cn(
+                    "absolute inset-0 z-[1] overflow-hidden pointer-events-none transition-opacity ease-in-out",
+                    phase === "playing" ? "opacity-100" : "opacity-0",
+                )}
+                style={{ transitionDuration: `${BANNER_FADE_MS}ms` }}
+            >
+                {(showVideo && size.width > 0) && <div
+                    key={playKey}
+                    className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
+                    style={{ width: size.width, height: size.height }}
+                >
+                    {__isElectronDesktop__
+                        ? <webview
+                            ref={playerRef}
+                            src={`${electronEmbedAddress}hero_${trailerId}`}
+                            style={{ width: "100%", height: "100%" }}
+                        />
+                        : <iframe
+                            ref={playerRef}
+                            {...({ credentialless: "true" } as any)}
+                            src={webUrl}
+                            title="Trailer"
+                            className="w-full h-full"
+                            allow="autoplay; encrypted-media"
+                            referrerPolicy="strict-origin-when-cross-origin"
+                            onLoad={onIframeLoad}
+                        />}
+                </div>}
+            </div>
+
+            {headerEl && createPortal(controls, headerEl)}
+
+            <TrailerWindow
+                open={windowOpen}
+                onOpenChange={setWindowOpen}
+                trailerId={trailerId}
+                start={windowStart}
+                title={media?.title?.userPreferred}
+                electronEmbedAddress={electronEmbedAddress}
+            />
+        </>
+    )
+}
+
+function BannerTrailerButton({ label, onClick, wide, children }: {
+    label: string
+    onClick: () => void
+    wide?: boolean
+    children: React.ReactNode
+}) {
+    return (
+        <Tooltip
+            trigger={<button
+                type="button"
+                aria-label={label}
+                onClick={onClick}
+                className={cn(
+                    "h-8 flex items-center justify-center gap-1.5 rounded-full text-white/85 text-base",
+                    "hover:bg-white/15 hover:text-white transition-colors",
+                    wide ? "px-3" : "w-8",
+                )}
+            >
+                {children}
+            </button>}
+        >
+            {label}
+        </Tooltip>
+    )
+}
+
+/**
+ * The trailer in a window, with sound, YouTube's controls and a fullscreen button.
+ * When opened from the banner it continues from where the banner was.
+ */
+export function TrailerWindow({ open, onOpenChange, trailerId, start, title, electronEmbedAddress }: {
+    open: boolean
+    onOpenChange: (open: boolean) => void
+    trailerId: string | undefined
+    start: number
+    title?: string | null
+    electronEmbedAddress: string | null
+}) {
+    const playerRef = React.useRef<any>(null)
+
+    const goFullscreen = () => {
+        const player = playerRef.current
+        if (!player) return
+        if (__isElectronDesktop__) {
+            // Fullscreen needs a user gesture inside the player page
+            player.executeJavaScript?.("window.__ytFullscreen && window.__ytFullscreen()", true).catch(() => {})
+        } else {
+            player.requestFullscreen?.()
+        }
+    }
+
+    if (!trailerId) return null
+
+    return (
+        <Modal
+            open={open}
+            onOpenChange={onOpenChange}
+            title={title ?? "Trailer"}
+            contentClass="max-w-6xl"
+        >
+            <div className="space-y-3" data-entry-trailer-window>
+                <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-black">
+                    {open && (__isElectronDesktop__
+                        ? (electronEmbedAddress && <webview
+                            ref={playerRef}
+                            src={`${electronEmbedAddress}watch_${start}_${trailerId}`}
+                            style={{ width: "100%", height: "100%" }}
+                            allowFullScreen
+                        />)
+                        : <iframe
+                            ref={playerRef}
+                            {...({ credentialless: "true" } as any)}
+                            src={`https://www.youtube-nocookie.com/embed/${trailerId}?autoplay=1&start=${start}&cc_load_policy=1&cc_lang_pref=en&hl=en&rel=0&playsinline=1`}
+                            title="Trailer"
+                            className="w-full h-full"
+                            allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+                            allowFullScreen
+                            referrerPolicy="strict-origin-when-cross-origin"
+                        />)}
+                </div>
+                <div className="flex justify-end">
+                    <Button intent="gray-subtle" size="sm" leftIcon={<LuMaximize />} onClick={goFullscreen}>
+                        Fullscreen
+                    </Button>
+                </div>
+            </div>
+        </Modal>
+    )
+}
+
+/**
+ * The "Trailer" link on anime pages, opening the same window as the banner (captions, fullscreen).
+ */
+export function TrailerWindowButton({ trailerId, title, trigger }: { trailerId: string, title?: string | null, trigger: React.ReactElement }) {
+    const [open, setOpen] = React.useState(false)
+    const { electronEmbedAddress } = useElectronYoutubeEmbed()
+    return <>
+        {React.cloneElement(trigger as React.ReactElement<any>, { onClick: () => setOpen(true) })}
+        <TrailerWindow
+            open={open}
+            onOpenChange={setOpen}
+            trailerId={trailerId}
+            start={0}
+            title={title}
+            electronEmbedAddress={electronEmbedAddress}
+        />
+    </>
 }
