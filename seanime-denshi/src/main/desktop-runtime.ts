@@ -1,4 +1,4 @@
-import { net } from "electron"
+import { app, net } from "electron"
 import http from "node:http"
 import type { AddressInfo } from "node:net"
 import { log } from "./logging"
@@ -75,7 +75,28 @@ export async function isDesktopServerReachable(): Promise<boolean> {
     }
 }
 
+// Banner (hero_) players run without controls, but YouTube's newer player still shows its play/pause button
+// over the video for the first few seconds. Hide YouTube's own controls inside those players only.
+const HERO_PLAYER_CSS = ".player-controls-background-container,.ytPlayerControlsContainerHost,.ytp-chrome-top,.ytp-chrome-bottom,.ytp-gradient-top,.ytp-gradient-bottom,.ytp-large-play-button,.ytp-pause-overlay,.ytp-bezel,.ytp-watermark{display:none!important}"
+let heroPlayerStyleHooked = false
+
+function hideHeroPlayerControls() {
+    if (heroPlayerStyleHooked) return
+    heroPlayerStyleHooked = true
+    app.on("web-contents-created", (_event, contents) => {
+        contents.on("frame-created", (_e, { frame }) => {
+            frame?.on("dom-ready", () => {
+                if (frame.isDestroyed() || frame === contents.mainFrame) return
+                if (!contents.getURL().includes("/player/hero_")) return
+                if (!frame.url.startsWith("https://www.youtube-nocookie.com/embed/")) return
+                frame.executeJavaScript(`(()=>{const s=document.createElement("style");s.textContent=${JSON.stringify(HERO_PLAYER_CSS)};(document.head||document.documentElement).appendChild(s)})()`).catch(() => {})
+            })
+        })
+    })
+}
+
 export function startLocalServer(): number {
+    hideHeroPlayerControls()
     const server = http.createServer((req, res) => {
         const match = req.url?.match(/^\/player\/([\w-]+)/)
         if (!match) {
