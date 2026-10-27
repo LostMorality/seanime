@@ -2,6 +2,7 @@ import { AL_AnimeDetailsById_Media, Anime_Entry } from "@/api/generated/types"
 import { AnimeAutoDownloaderButton } from "@/app/(main)/_features/anime-library/_containers/anime-auto-downloader-button"
 import { ToggleLockFilesButton } from "@/app/(main)/_features/anime-library/_containers/toggle-lock-files-button"
 import { TrailerModal } from "@/app/(main)/_features/anime/_components/trailer-modal"
+import { EntryBannerTrailer } from "@/app/(main)/entry/_components/entry-trailer-section"
 import { AnimeEntryStudio } from "@/app/(main)/_features/media/_components/anime-entry-studio"
 import {
     AnimeEntryRankings,
@@ -74,6 +75,7 @@ export function MetaSection(props: { entry: Anime_Entry, details: AL_AnimeDetail
         <MediaPageHeader
             backgroundImage={entry.media?.bannerImage}
             coverImage={entry.media?.coverImage?.extraLarge}
+            bannerOverlay={<EntryBannerTrailer media={entry.media} />}
         >
 
             <MediaPageHeaderDetailsContainer>

@@ -31,6 +31,8 @@ type MediaPageHeaderProps = {
     children?: React.ReactNode
     backgroundImage?: string
     coverImage?: string
+    // Drawn over the banner image, under its gradients (e.g. a trailer)
+    bannerOverlay?: React.ReactNode
 }
 
 export function MediaPageHeader(props: MediaPageHeaderProps) {
@@ -39,6 +41,7 @@ export function MediaPageHeader(props: MediaPageHeaderProps) {
         children,
         backgroundImage,
         coverImage,
+        bannerOverlay,
         ...rest
     } = props
 
@@ -170,6 +173,8 @@ export function MediaPageHeader(props: MediaPageHeaderProps) {
                         animate={{ scale: 1, x: 0, y: 1, opacity: shouldDimBanner ? 0.3 : 1 }}
                         transition={{ duration: 0.22, ease: "easeOut" }}
                     />}
+
+                    {bannerOverlay}
 
                     {shouldBlurBanner && <div
                         data-media-page-header-banner-blur

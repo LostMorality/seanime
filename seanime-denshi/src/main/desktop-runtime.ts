@@ -90,6 +90,20 @@ export function startLocalServer(): number {
             const videoID = id.substring(8)
             url = `https://www.youtube-nocookie.com/embed/${videoID}?autoplay=1&controls=0&mute=1&disablekb=1&loop=1&vq=medium&playlist=${videoID}&cc_lang_pref=ja&enablejsapi=true`
         }
+        // Trailer on anime pages: starts muted with English captions forced on, the page unmutes it on hover
+        if (id.startsWith("inline_")) {
+            const videoID = id.substring(7)
+            url = `https://www.youtube-nocookie.com/embed/${videoID}?autoplay=1&mute=1&loop=1&playlist=${videoID}&cc_load_policy=1&cc_lang_pref=en&hl=en&rel=0&playsinline=1&enablejsapi=1`
+        }
+        // Trailer in the anime page banner: plays once, muted, without controls
+        if (id.startsWith("hero_")) {
+            const videoID = id.substring(5)
+            url = `https://www.youtube-nocookie.com/embed/${videoID}?autoplay=1&controls=0&mute=1&disablekb=1&iv_load_policy=3&cc_load_policy=1&cc_lang_pref=en&hl=en&rel=0&playsinline=1&enablejsapi=1`
+        }
+        if (id.startsWith("play_")) {
+            const videoID = id.substring(5)
+            url = `https://www.youtube-nocookie.com/embed/${videoID}?autoplay=1&cc_load_policy=1&cc_lang_pref=en&hl=en&rel=0&playsinline=1&enablejsapi=1`
+        }
         if (id.startsWith("banner_")) {
             const videoID = id.substring(7)
             url = `https://www.youtube-nocookie.com/embed/${videoID}?autoplay=1&controls=0&mute=1&disablekb=1&loop=1&playlist=${videoID}&cc_lang_pref=ja&enablejsapi=true`
@@ -99,7 +113,15 @@ export function startLocalServer(): number {
         res.end(`<!DOCTYPE html>
 <html lang="en">
 <head><style>html,body{margin:0;height:100%;background:black}iframe{position:absolute;inset:0;width:100%;height:100%;border:0}</style></head>
-<body><iframe src="${url}" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe></body>
+<body><iframe id="yt" src="${url}" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>
+<script>
+var yt=document.getElementById("yt");
+window.__ytState=-1;
+window.__yt=function(f){yt.contentWindow&&yt.contentWindow.postMessage(JSON.stringify({event:"command",func:f,args:[]}),"*")};
+function listen(){yt.contentWindow&&yt.contentWindow.postMessage(JSON.stringify({event:"listening",id:1,channel:"widget"}),"*")}
+yt.addEventListener("load",function(){listen();setTimeout(listen,1000);setTimeout(listen,3000)});
+window.addEventListener("message",function(e){try{var d=JSON.parse(e.data);if(d.event==="onStateChange")window.__ytState=d.info;else if(d.info&&typeof d.info.playerState==="number")window.__ytState=d.info.playerState}catch(_){}});
+</script></body>
 </html>`)
     })
 

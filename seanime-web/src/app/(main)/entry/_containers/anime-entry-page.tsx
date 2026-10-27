@@ -3,6 +3,7 @@ import { useGetAnilistAnimeDetails } from "@/api/hooks/anilist.hooks"
 import { useGetAnimeEntry } from "@/api/hooks/anime_entries.hooks"
 import { useListAnimeEntryEpisodeTabExtensions } from "@/api/hooks/extensions.hooks"
 import { MediaEntryCharactersSection } from "@/app/(main)/_features/media/_components/media-entry-characters-section"
+import { EntryTrailerSection } from "@/app/(main)/entry/_components/entry-trailer-section"
 import { MediaEntryPageLoadingDisplay } from "@/app/(main)/_features/media/_components/media-entry-page-loading-display"
 import { usePluginAnimeEntryEpisodeTabs } from "@/app/(main)/_features/plugin/plugin-entry-episode-tabs"
 import {
@@ -312,6 +313,7 @@ export function AnimeEntryPage() {
 
     const bottomSection = <>
         <PluginWebviewSlot slot="after-anime-entry-episode-list" />
+        <EntryTrailerSection media={animeEntry.media} />
         <MediaEntryCharactersSection details={animeDetails} loading={animeDetailsLoading} />
         <RelationsRecommendationsSection entry={animeEntry} details={animeDetails} loading={animeDetailsLoading} />
     </>
