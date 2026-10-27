@@ -36,6 +36,7 @@ export class VideoCorePipManager extends EventTarget {
     private isSyncingFromMain = false
     private isSyncingFromPip = false
     private playbackInfo: VideoCore_VideoPlaybackInfo | null = null
+    private videoFilter = "none"
 
     constructor(onPipElementChange: (element: HTMLVideoElement | null) => void) {
         super()
@@ -125,6 +126,11 @@ export class VideoCorePipManager extends EventTarget {
         this.mediaCaptionsManager = mediaCaptionsManager
     }
 
+    // CSS filter string from the video enhancement settings, "none" when disabled
+    setVideoFilter(filter: string) {
+        this.videoFilter = filter
+    }
+
     togglePip(enable?: boolean) {
         const isCurrentlyInPip = document.pictureInPictureElement !== null
         const shouldEnable = enable !== undefined ? enable : !isCurrentlyInPip
@@ -156,15 +162,16 @@ export class VideoCorePipManager extends EventTarget {
             const hasLibassSubtitles = this.subtitleManager?.getSelectedTrackNumberOrNull?.() != null
             const hasMediaCaptions = this.mediaCaptionsManager?.getSelectedTrackIndexOrNull?.() != null
             const hasActiveSubtitles = hasLibassSubtitles || hasMediaCaptions
+            const hasVideoFilter = this.videoFilter !== "none"
 
-            if (!hasActiveSubtitles) {
+            if (!hasActiveSubtitles && !hasVideoFilter) {
                 log.info("Entering PiP without subtitles")
                 await this.video.requestPictureInPicture()
                 return
             }
 
-            log.info("Entering PiP with subtitle burning", { hasLibassSubtitles, hasMediaCaptions })
-            await this.enterPipWithSubtitles()
+            log.info("Entering PiP with canvas rendering", { hasLibassSubtitles, hasMediaCaptions, hasVideoFilter })
+            await this.enterPipWithCanvas()
         }
         catch (error) {
             log.error("Failed to enter PiP", error)
@@ -253,7 +260,7 @@ export class VideoCorePipManager extends EventTarget {
             }
         }
 
-        context.drawImage(this.video, 0, 0)
+        this.drawVideoFrame(context)
 
         // Draw ASS/SSA subtitles
         const subtitleCanvas = this.subtitleManager?.libassRenderer?._canvas
@@ -275,6 +282,14 @@ export class VideoCorePipManager extends EventTarget {
         animationFrameRef.current = this.video.requestVideoFrameCallback(this.renderToCanvas(pipVideo, context, animationFrameRef))
     }
 
+    // Only the video gets the filter, subtitles are drawn on top unfiltered
+    private drawVideoFrame(context: CanvasRenderingContext2D) {
+        if (!this.video) return
+        context.filter = this.videoFilter
+        context.drawImage(this.video, 0, 0)
+        context.filter = "none"
+    }
+
     private handleMainVideoPlay = () => {
         if (this.isSyncingFromPip) return
         if (this.pipProxy && this.pipProxy.paused) {
@@ -293,8 +308,8 @@ export class VideoCorePipManager extends EventTarget {
         }
     }
 
-    private async enterPipWithSubtitles() {
-        if (!this.video || (!this.subtitleManager && !this.mediaCaptionsManager)) return
+    private async enterPipWithCanvas() {
+        if (!this.video) return
 
         const canvas = document.createElement("canvas")
         const context = canvas.getContext("2d")
@@ -342,7 +357,7 @@ export class VideoCorePipManager extends EventTarget {
         const animationFrameRef = { current: 0 }
 
         // draw initial frame
-        context.drawImage(this.video, 0, 0)
+        this.drawVideoFrame(context)
         const subtitleCanvas = this.subtitleManager?.libassRenderer?._canvas
         if (subtitleCanvas && canvas.width && canvas.height) {
             context.drawImage(subtitleCanvas, 0, 0, canvas.width, canvas.height)

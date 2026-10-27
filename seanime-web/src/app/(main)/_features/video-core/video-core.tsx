@@ -357,6 +357,15 @@ const PlayerContent = React.memo<PlayerContentProps>(({
     const pipManager = useAtomValue(vc_pipManager)
     const action = useSetAtom(vc_dispatchAction)
     const [autoPlay] = useAtom(vc_autoPlayVideoAtom)
+
+    const videoFilter = (settings.videoEnhancement.enabled && beautifyImage)
+        ? `contrast(${settings.videoEnhancement.contrast}) saturate(${settings.videoEnhancement.saturation}) brightness(${settings.videoEnhancement.brightness})`
+        : "none"
+
+    // The PiP window shows raw frames, so the canvas path has to apply the filter itself
+    React.useEffect(() => {
+        pipManager?.setVideoFilter(videoFilter)
+    }, [pipManager, videoFilter])
     const [muted] = useAtom(vc_storedMutedAtom)
     const showStats = useAtomValue(vc_showStatsForNerdsAtom)
     const isCastingActive = useAtomValue(vc_isCasting)
@@ -469,9 +478,7 @@ const PlayerContent = React.memo<PlayerContentProps>(({
                                     height: "100%",
                                     objectFit: "contain",
                                     objectPosition: "center",
-                                    filter: (settings.videoEnhancement.enabled && beautifyImage)
-                                        ? `contrast(${settings.videoEnhancement.contrast}) saturate(${settings.videoEnhancement.saturation}) brightness(${settings.videoEnhancement.brightness})`
-                                        : "none",
+                                    filter: videoFilter,
                                     imageRendering: "auto",
                                 }}
                             >
