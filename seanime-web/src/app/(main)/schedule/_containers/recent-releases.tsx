@@ -6,7 +6,7 @@ import { Carousel, CarouselContent, CarouselDotButtons } from "@/components/ui/c
 import { addSeconds, formatDistanceToNow, subDays } from "date-fns"
 import React from "react"
 
-export function RecentReleases() {
+export function RecentReleases({ genres }: { genres?: string[] } = {}) {
 
     const { data, isLoading } = useAnilistListRecentAiringAnime({
         page: 1,
@@ -18,7 +18,8 @@ export function RecentReleases() {
     const aired = data?.Page?.airingSchedules?.filter(item => item?.media?.isAdult === false
         && item?.media?.type === "ANIME"
         && item?.media?.countryOfOrigin === "JP"
-        && item?.media?.format !== "TV_SHORT",
+        && item?.media?.format !== "TV_SHORT"
+        && (!genres?.length || genres.some(g => item?.media?.genres?.includes(g))),
     ).filter(Boolean)
 
     if (!aired?.length && !isLoading) return null

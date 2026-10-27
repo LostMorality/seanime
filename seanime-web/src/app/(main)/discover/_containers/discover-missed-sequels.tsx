@@ -7,14 +7,15 @@ import { useInView } from "motion/react"
 import React from "react"
 
 
-export function DiscoverMissedSequelsSection({ title = "You Might Have Missed" }: { title?: string }) {
+export function DiscoverMissedSequelsSection({ title = "You Might Have Missed", genres }: { title?: string, genres?: string[] }) {
     const ref = React.useRef(null)
     const isInView = useInView(ref, { once: true })
     const { data, isLoading } = useAnilistListMissedSequels(isInView)
 
     if (!isInView && !data) return <div ref={ref} />
 
-    if (!data?.length) return null
+    const media = data?.filter(m => !!m && (!genres?.length || genres.some(g => m.genres?.includes(g))))
+    if (!media?.length) return null
 
     return (
         <PageWrapper className="space-y-2 z-[5] relative" data-discover-missed-sequels-container>
@@ -31,7 +32,7 @@ export function DiscoverMissedSequelsSection({ title = "You Might Have Missed" }
                 {/*<CarouselMasks />*/}
                 <CarouselDotButtons />
                 <CarouselContent className="px-6" ref={ref}>
-                    {!isLoading ? data?.filter(Boolean).map(media => {
+                    {!isLoading ? media.map(media => {
                         return (
                             <MediaEntryCard
                                 key={media.id}

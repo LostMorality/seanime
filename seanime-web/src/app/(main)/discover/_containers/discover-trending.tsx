@@ -1,4 +1,5 @@
 import { AL_BaseAnime, AL_BaseManga } from "@/api/generated/types"
+import { useDiscoverMediaFilter } from "@/app/(main)/discover/_lib/discover-filters"
 import { MediaEntryCard } from "@/app/(main)/_features/media/_components/media-entry-card"
 import { MediaEntryCardSkeleton } from "@/app/(main)/_features/media/_components/media-entry-card-skeleton"
 import { MediaGenreSelector } from "@/app/(main)/_features/media/_components/media-genre-selector"
@@ -24,6 +25,7 @@ export const __discover_setAnimeRandomNumberAtom = atom(
 export function DiscoverTrending() {
 
     const { data, isLoading } = useDiscoverTrendingAnime()
+    const filterMedia = useDiscoverMediaFilter()
     const setRandomTrendingAtom = useSetAtom(__discover_randomTrendingAtom)
     const isHoveringHeader = useAtomValue(__discover_hoveringHeaderAtom)
     const clickedHeaderDot = useAtomValue(__discover_clickedCarouselDotAtom) // clears interval
@@ -104,7 +106,7 @@ export function DiscoverTrending() {
             {/*<CarouselMasks />*/}
             <CarouselDotButtons />
             <CarouselContent className="px-6">
-                {!isLoading ? data?.Page?.media?.filter(Boolean).map(media => {
+                {!isLoading ? filterMedia(data?.Page?.media).map(media => {
                     return (
                         <MediaEntryCard
                             key={media.id}

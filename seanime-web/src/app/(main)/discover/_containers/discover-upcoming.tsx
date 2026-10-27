@@ -1,6 +1,8 @@
 import { MediaEntryCard } from "@/app/(main)/_features/media/_components/media-entry-card"
+import { useDiscoverMediaFilter } from "@/app/(main)/discover/_lib/discover-filters"
 import { MediaEntryCardSkeleton } from "@/app/(main)/_features/media/_components/media-entry-card-skeleton"
-import { useDiscoverUpcomingAnime } from "@/app/(main)/discover/_lib/handle-discover-queries"
+import { __discover_upcomingGenresAtom, useDiscoverUpcomingAnime } from "@/app/(main)/discover/_lib/handle-discover-queries"
+import { DiscoverGenreSelector } from "@/app/(main)/discover/_components/discover-filter-bar"
 import { Carousel, CarouselContent, CarouselDotButtons } from "@/components/ui/carousel"
 import React from "react"
 
@@ -8,6 +10,7 @@ export function DiscoverUpcoming() {
 
     const ref = React.useRef<HTMLDivElement>(null)
     const { data, isLoading } = useDiscoverUpcomingAnime(ref)
+    const filterMedia = useDiscoverMediaFilter()
 
     return (
         <Carousel
@@ -19,10 +22,10 @@ export function DiscoverUpcoming() {
             }}
             autoScroll
         >
-            {/*<CarouselMasks />*/}
+            <DiscoverGenreSelector atom={__discover_upcomingGenresAtom} />
             <CarouselDotButtons />
             <CarouselContent className="px-6" ref={ref}>
-                {!isLoading ? data?.Page?.media?.filter(Boolean).map(media => {
+                {!isLoading ? filterMedia(data?.Page?.media).map(media => {
                     return (
 
                         <MediaEntryCard

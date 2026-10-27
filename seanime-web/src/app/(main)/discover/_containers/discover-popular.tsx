@@ -1,4 +1,5 @@
 import { MediaEntryCard } from "@/app/(main)/_features/media/_components/media-entry-card"
+import { useDiscoverMediaFilter } from "@/app/(main)/discover/_lib/discover-filters"
 import { MediaEntryCardSkeleton } from "@/app/(main)/_features/media/_components/media-entry-card-skeleton"
 import { MediaGenreSelector } from "@/app/(main)/_features/media/_components/media-genre-selector"
 import {
@@ -17,6 +18,7 @@ export function DiscoverPopular() {
 
     const ref = React.useRef<HTMLDivElement>(null)
     const { data, isLoading } = useDiscoverPopularAnime(ref)
+    const filterMedia = useDiscoverMediaFilter()
 
     return (
         <Carousel
@@ -31,7 +33,7 @@ export function DiscoverPopular() {
             {/*<CarouselMasks />*/}
             <CarouselDotButtons flag={data?.Page?.media} />
             <CarouselContent className="px-6" ref={ref}>
-                {!!data ? data?.Page?.media?.filter(Boolean).map(media => {
+                {!!data ? filterMedia(data?.Page?.media).map(media => {
                     return (
                         <MediaEntryCard
                             key={media.id}
@@ -52,6 +54,7 @@ export function DiscoverThisSeason() {
 
     const ref = React.useRef<HTMLDivElement>(null)
     const { data } = useDiscoverCurrentSeasonAnime(ref)
+    const filterMedia = useDiscoverMediaFilter()
 
     const [selectedGenre, setSelectedGenre] = useAtom(__discover_currentSeasonGenresAtom)
 
@@ -83,7 +86,7 @@ export function DiscoverThisSeason() {
             {/*<CarouselMasks />*/}
             <CarouselDotButtons />
             <CarouselContent className="px-6" ref={ref}>
-                {!!data ? data?.Page?.media?.filter(Boolean)?.sort((a, b) => b.meanScore! - a.meanScore!).map(media => {
+                {!!data ? filterMedia(data?.Page?.media).sort((a, b) => b.meanScore! - a.meanScore!).map(media => {
                     return (
                         <MediaEntryCard
                             key={media.id}
@@ -104,6 +107,7 @@ export function DiscoverPastSeason() {
 
     const ref = React.useRef<HTMLDivElement>(null)
     const { data } = useDiscoverPastSeasonAnime(ref)
+    const filterMedia = useDiscoverMediaFilter()
 
     const [selectedGenre, setSelectedGenre] = useAtom(__discover_pastSeasonGenresAtom)
 
@@ -135,7 +139,7 @@ export function DiscoverPastSeason() {
             {/*<CarouselMasks />*/}
             <CarouselDotButtons />
             <CarouselContent className="px-6" ref={ref}>
-                {!!data ? data?.Page?.media?.filter(Boolean)?.sort((a, b) => b.meanScore! - a.meanScore!).map(media => {
+                {!!data ? filterMedia(data?.Page?.media).sort((a, b) => b.meanScore! - a.meanScore!).map(media => {
                     return (
                         <MediaEntryCard
                             key={media.id}

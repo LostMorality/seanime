@@ -1,14 +1,17 @@
 import { PluginWebviewSlot } from "@/app/(main)/_features/plugin/webview/plugin-webviews"
 import { useServerStatus } from "@/app/(main)/_hooks/use-server-status"
+import { DiscoverFilterBar } from "@/app/(main)/discover/_components/discover-filter-bar"
 import { DiscoverPageHeader } from "@/app/(main)/discover/_components/discover-page-header"
 import { DiscoverAiringSchedule } from "@/app/(main)/discover/_containers/discover-airing-schedule"
 import { DiscoverMissedSequelsSection } from "@/app/(main)/discover/_containers/discover-missed-sequels"
+import { DiscoverRecommended } from "@/app/(main)/discover/_containers/discover-recommended"
 import { DiscoverPastSeason, DiscoverThisSeason } from "@/app/(main)/discover/_containers/discover-popular"
 import { DiscoverTrending } from "@/app/(main)/discover/_containers/discover-trending"
 import { DiscoverTrendingCountry } from "@/app/(main)/discover/_containers/discover-trending-country"
 import { DiscoverTrendingMovies } from "@/app/(main)/discover/_containers/discover-trending-movies"
 import { DiscoverUpcoming } from "@/app/(main)/discover/_containers/discover-upcoming"
 import { __discord_pageTypeAtom } from "@/app/(main)/discover/_lib/discover.atoms"
+import { useDiscoverGenres } from "@/app/(main)/discover/_lib/discover-filters"
 import { RecentReleases } from "@/app/(main)/schedule/_containers/recent-releases"
 import { PageWrapper } from "@/components/shared/page-wrapper"
 import { StaticTabs } from "@/components/ui/tabs"
@@ -25,6 +28,7 @@ export default function Page() {
     const [pageType, setPageType] = useAtom(__discord_pageTypeAtom)
     const searchParams = useSearchParams()
     const searchType = searchParams.get("type")
+    const discoverGenres = useDiscoverGenres()
 
 
     React.useEffect(() => {
@@ -106,11 +110,13 @@ export default function Page() {
                         }}
                         data-discover-page-anime-container
                     >
+                        <DiscoverFilterBar />
+                        <DiscoverRecommended />
                         <div className="space-y-2 z-[5] relative" data-discover-page-anime-trending-container>
                             <h2>Trending Right Now</h2>
                             <DiscoverTrending />
                         </div>
-                        <RecentReleases />
+                        <RecentReleases genres={discoverGenres} />
                         <div className="space-y-2 z-[5] relative" data-discover-page-anime-highest-rated-container>
                             <h2>Top of the Season</h2>
                             <DiscoverThisSeason />
@@ -119,7 +125,7 @@ export default function Page() {
                             <h2>Best of Last Season</h2>
                             <DiscoverPastSeason />
                         </div>
-                        <DiscoverMissedSequelsSection />
+                        <DiscoverMissedSequelsSection genres={discoverGenres} />
                         <div className="space-y-2 z-[5] relative" data-discover-page-anime-upcoming-container>
                             <h2>Coming Soon</h2>
                             <DiscoverUpcoming />
