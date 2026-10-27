@@ -44,7 +44,7 @@ This is my fork of [Seanime](https://github.com/5rahim/seanime). It isn't an off
 |---|---|
 | Discover | **Hide watched** and **Also hide Planning** switches (on by default), a genre filter on every row, and a **Recommended for You** row based on the genres you watch and how you score them |
 | Anime pages | Recommendations skip anime you've already seen and fetch more from AniList when most of the top 8 are hidden |
-| Anime pages | The trailer plays in the banner, Steam-style: muted, sound while your mouse is over the header, then it fades back to the banner image when it ends. It can also go below the episodes, be click-to-play, or be turned off |
+| Anime pages | The trailer plays in the banner, Steam-style: muted, sound while your mouse is over the header, then it fades back to the banner image when it ends. Hover the header for buttons: **Sound on** (stays on), **Replay**, and **Watch trailer**, which opens it in a window from where you left off with a **Fullscreen** button. It pauses when you scroll away or switch apps. It can also go below the episodes, be click-to-play, or be turned off |
 | Anime cards | A **新エピソード / NEW EPISODE** sash across the cover of airing shows you're watching when an episode you haven't seen is out |
 | Anime cards | Right-click the **+** (Add to list) button to add as Watching, Planning, Completed, Paused or Dropped. A normal click still adds as Planning |
 | My Lists | **Date added (oldest first)** sort |
