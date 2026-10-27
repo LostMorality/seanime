@@ -128,13 +128,12 @@ export function MetaSection(props: { entry: Anime_Entry, details: AL_AnimeDetail
                                 Open in website
                             </Tooltip>}
 
-                            {!!entry?.media?.trailer?.id && <TrailerWindowButton
-                                trailerId={entry.media.trailer.id}
-                                title={entry.media.title?.userPreferred}
+                            <TrailerWindowButton
+                                media={entry?.media}
                                 trigger={<Button size="sm" intent="gray-link" className="px-0">
                                     Trailer
                                 </Button>}
-                            />}
+                            />
                         </div>
                     </div>}
                 >
