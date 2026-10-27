@@ -100,6 +100,11 @@ export function startLocalServer(): number {
             const videoID = id.substring(5)
             url = `https://www.youtube-nocookie.com/embed/${videoID}?autoplay=1&controls=0&mute=1&disablekb=1&iv_load_policy=3&cc_load_policy=1&cc_lang_pref=en&hl=en&rel=0&playsinline=1&enablejsapi=1`
         }
+        // Full trailer window opened from the banner: watch_<seconds>_<videoID>, with sound and controls
+        const watch = id.match(/^watch_(\d+)_([\w-]+)$/)
+        if (watch) {
+            url = `https://www.youtube-nocookie.com/embed/${watch[2]}?autoplay=1&start=${watch[1]}&cc_load_policy=1&cc_lang_pref=en&hl=en&rel=0&playsinline=1&enablejsapi=1`
+        }
         if (id.startsWith("play_")) {
             const videoID = id.substring(5)
             url = `https://www.youtube-nocookie.com/embed/${videoID}?autoplay=1&cc_load_policy=1&cc_lang_pref=en&hl=en&rel=0&playsinline=1&enablejsapi=1`
@@ -117,10 +122,13 @@ export function startLocalServer(): number {
 <script>
 var yt=document.getElementById("yt");
 window.__ytState=-1;
-window.__yt=function(f){yt.contentWindow&&yt.contentWindow.postMessage(JSON.stringify({event:"command",func:f,args:[]}),"*")};
+window.__ytTime=0;
+window.__ytDur=0;
+window.__yt=function(f,a){yt.contentWindow&&yt.contentWindow.postMessage(JSON.stringify({event:"command",func:f,args:a||[]}),"*")};
+window.__ytFullscreen=function(){(yt.requestFullscreen||yt.webkitRequestFullscreen).call(yt)};
 function listen(){yt.contentWindow&&yt.contentWindow.postMessage(JSON.stringify({event:"listening",id:1,channel:"widget"}),"*")}
 yt.addEventListener("load",function(){listen();setTimeout(listen,1000);setTimeout(listen,3000)});
-window.addEventListener("message",function(e){try{var d=JSON.parse(e.data);if(d.event==="onStateChange")window.__ytState=d.info;else if(d.info&&typeof d.info.playerState==="number")window.__ytState=d.info.playerState}catch(_){}});
+window.addEventListener("message",function(e){try{var d=JSON.parse(e.data);if(d.event==="onStateChange")window.__ytState=d.info;else if(d.info){if(typeof d.info.playerState==="number")window.__ytState=d.info.playerState;if(typeof d.info.currentTime==="number")window.__ytTime=d.info.currentTime;if(typeof d.info.duration==="number")window.__ytDur=d.info.duration}}catch(_){}});
 </script></body>
 </html>`)
     })
