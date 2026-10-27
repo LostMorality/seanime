@@ -57,6 +57,7 @@ const (
 	GetAllExtensionsEndpoint                           = "EXTENSIONS-get-all-extensions"
 	GetAniListStatsEndpoint                            = "ANILIST-get-ani-list-stats"
 	GetAnilistAnimeDetailsEndpoint                     = "ANILIST-get-anilist-anime-details"
+	GetAnilistAnimeRecommendationsEndpoint             = "ANILIST-get-anilist-anime-recommendations"
 	GetAnilistCacheLayerStatusEndpoint                 = "ANILIST-get-anilist-cache-layer-status"
 	GetAnilistMangaCollectionEndpoint                  = "MANGA-get-anilist-manga-collection"
 	GetAnilistStudioDetailsEndpoint                    = "ANILIST-get-anilist-studio-details"

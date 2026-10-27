@@ -1,4 +1,5 @@
 import { AL_AnimeDetailsById_Media, Anime_Entry, Nullish } from "@/api/generated/types"
+import { useGetAnilistAnimeRecommendations } from "@/api/hooks/anilist.hooks"
 import { MediaCardGrid } from "@/app/(main)/_features/media/_components/media-card-grid"
 import { MediaEntryCard } from "@/app/(main)/_features/media/_components/media-entry-card"
 import { MediaEntryDetailsSkeleton } from "@/app/(main)/_features/media/_components/media-entry-page-loading-display"
@@ -41,8 +42,18 @@ export function RelationsRecommendationsSection(props: RelationsRecommendationsS
 
     // Follows the Discover page's "Hide watched" switches
     const filterMedia = useDiscoverMediaFilter()
-    const recommendations = React.useMemo(() => filterMedia(details?.recommendations?.edges?.map(edge => edge?.node?.mediaRecommendation)),
+    const topRecommendations = React.useMemo(() => filterMedia(details?.recommendations?.edges?.map(edge => edge?.node?.mediaRecommendation)),
         [details?.recommendations?.edges, filterMedia])
+
+    // The details only carry the top 8, so fetch more when most of them got hidden
+    const shownCount = details?.recommendations?.edges?.length ?? 0
+    const needsMore = shownCount > 0 && topRecommendations.length < Math.min(4, shownCount)
+    const { data: moreRecommendations } = useGetAnilistAnimeRecommendations(details?.id, needsMore)
+
+    const recommendations = React.useMemo(() => {
+        if (!needsMore || !moreRecommendations) return topRecommendations
+        return filterMedia(moreRecommendations).filter(m => m.id !== details?.id).slice(0, shownCount)
+    }, [needsMore, moreRecommendations, topRecommendations, filterMedia, details?.id, shownCount])
 
     if (loading && !details) return <MediaEntryDetailsSkeleton showCharacters={false} />
     if (!entry || !details) return null

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"seanime/internal/api/anilist"
@@ -181,6 +182,82 @@ func (h *Handler) HandleGetAnilistAnimeDetails(c echo.Context) error {
 }
 
 //----------------------------------------------------------------------------------------------------------------------------------------------------
+
+var recommendationsCache = result.NewCache[int, []*anilist.BaseAnime]()
+
+const animeRecommendationsQuery = `query AnimeRecommendations($id: Int) {
+  Media(id: $id, type: ANIME) {
+    recommendations(page: 1, perPage: 50, sort: RATING_DESC) {
+      nodes {
+        mediaRecommendation {
+          id idMal siteUrl status(version: 2) season type format seasonYear bannerImage episodes synonyms isAdult
+          countryOfOrigin meanScore description genres duration
+          trailer { id site thumbnail }
+          title { userPreferred romaji english native }
+          coverImage { extraLarge large medium color }
+          startDate { year month day }
+          endDate { year month day }
+          nextAiringEpisode { airingAt timeUntilAiring episode }
+        }
+      }
+    }
+  }
+}`
+
+// HandleGetAnilistAnimeRecommendations
+//
+//	@summary returns up to 50 AniList recommendations for an anime.
+//	@desc The media details only include the top 8.
+//	@param id - int - true - "The AniList anime ID"
+//	@returns []anilist.BaseAnime
+//	@route /api/v1/anilist/media-recommendations/{id} [GET]
+func (h *Handler) HandleGetAnilistAnimeRecommendations(c echo.Context) error {
+
+	mId, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		return h.RespondWithError(c, err)
+	}
+
+	if recommendations, ok := recommendationsCache.Get(mId); ok {
+		return h.RespondWithData(c, recommendations)
+	}
+
+	data, err := anilist.CustomQuery(map[string]interface{}{
+		"query":     animeRecommendationsQuery,
+		"variables": map[string]interface{}{"id": mId},
+	}, h.App.Logger, "")
+	if err != nil {
+		return h.RespondWithError(c, err)
+	}
+
+	b, err := json.Marshal(data)
+	if err != nil {
+		return h.RespondWithError(c, err)
+	}
+
+	var res struct {
+		Media struct {
+			Recommendations struct {
+				Nodes []struct {
+					MediaRecommendation *anilist.BaseAnime `json:"mediaRecommendation"`
+				} `json:"nodes"`
+			} `json:"recommendations"`
+		} `json:"Media"`
+	}
+	if err := json.Unmarshal(b, &res); err != nil {
+		return h.RespondWithError(c, err)
+	}
+
+	recommendations := make([]*anilist.BaseAnime, 0, len(res.Media.Recommendations.Nodes))
+	for _, node := range res.Media.Recommendations.Nodes {
+		if node.MediaRecommendation != nil {
+			recommendations = append(recommendations, node.MediaRecommendation)
+		}
+	}
+	recommendationsCache.SetT(mId, recommendations, time.Hour)
+
+	return h.RespondWithData(c, recommendations)
+}
 
 var studioDetailsMap = result.NewMap[int, *anilist.StudioDetails]()
 

@@ -71,6 +71,15 @@
 //     })
 // }
 
+// export function useGetAnilistAnimeRecommendations(id: number) {
+//     return useServerQuery<Array<AL_BaseAnime>>({
+//         endpoint: API_ENDPOINTS.ANILIST.GetAnilistAnimeRecommendations.endpoint.replace("{id}", String(id)),
+//         method: API_ENDPOINTS.ANILIST.GetAnilistAnimeRecommendations.methods[0],
+//         queryKey: [API_ENDPOINTS.ANILIST.GetAnilistAnimeRecommendations.key],
+//         enabled: true,
+//     })
+// }
+
 // export function useGetAnilistStudioDetails(id: number) {
 //     return useServerQuery<AL_StudioDetails>({
 //         endpoint: API_ENDPOINTS.ANILIST.GetAnilistStudioDetails.endpoint.replace("{id}", String(id)),

@@ -237,6 +237,49 @@
     }
   },
   {
+    "name": "HandleGetAnilistAnimeRecommendations",
+    "trimmedName": "GetAnilistAnimeRecommendations",
+    "comments": [
+      "HandleGetAnilistAnimeRecommendations",
+      "",
+      "\t@summary returns up to 50 AniList recommendations for an anime.",
+      "\t@desc The media details only include the top 8.",
+      "\t@param id - int - true - \"The AniList anime ID\"",
+      "\t@returns []anilist.BaseAnime",
+      "\t@route /api/v1/anilist/media-recommendations/{id} [GET]",
+      ""
+    ],
+    "filepath": "internal/handlers/anilist.go",
+    "filename": "anilist.go",
+    "api": {
+      "summary": "returns up to 50 AniList recommendations for an anime.",
+      "descriptions": [
+        "The media details only include the top 8."
+      ],
+      "endpoint": "/api/v1/anilist/media-recommendations/{id}",
+      "methods": [
+        "GET"
+      ],
+      "params": [
+        {
+          "name": "id",
+          "jsonName": "id",
+          "goType": "int",
+          "usedStructType": "",
+          "typescriptType": "number",
+          "required": true,
+          "descriptions": [
+            "The AniList anime ID"
+          ]
+        }
+      ],
+      "bodyFields": [],
+      "returns": "[]anilist.BaseAnime",
+      "returnGoType": "anilist.BaseAnime",
+      "returnTypescriptType": "Array\u003cAL_BaseAnime\u003e"
+    }
+  },
+  {
     "name": "HandleGetAnilistStudioDetails",
     "trimmedName": "GetAnilistStudioDetails",
     "comments": [

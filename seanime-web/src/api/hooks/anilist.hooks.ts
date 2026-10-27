@@ -105,6 +105,15 @@ export function useGetAnilistAnimeDetails(id: Nullish<number | string>) {
     })
 }
 
+export function useGetAnilistAnimeRecommendations(id: Nullish<number>, enabled: boolean) {
+    return useServerQuery<Array<AL_BaseAnime>>({
+        endpoint: API_ENDPOINTS.ANILIST.GetAnilistAnimeRecommendations.endpoint.replace("{id}", String(id)),
+        method: API_ENDPOINTS.ANILIST.GetAnilistAnimeRecommendations.methods[0],
+        queryKey: [API_ENDPOINTS.ANILIST.GetAnilistAnimeRecommendations.key, String(id)],
+        enabled: !!id && enabled,
+    })
+}
+
 export function useDeleteAnilistListEntry(id: Nullish<string | number>, type: "anime" | "manga", onSuccess: () => void) {
     const queryClient = useQueryClient()
 
