@@ -1,8 +1,7 @@
 import { AL_AnimeDetailsById_Media, Anime_Entry } from "@/api/generated/types"
 import { AnimeAutoDownloaderButton } from "@/app/(main)/_features/anime-library/_containers/anime-auto-downloader-button"
 import { ToggleLockFilesButton } from "@/app/(main)/_features/anime-library/_containers/toggle-lock-files-button"
-import { TrailerModal } from "@/app/(main)/_features/anime/_components/trailer-modal"
-import { EntryBannerTrailer } from "@/app/(main)/entry/_components/entry-trailer-section"
+import { EntryBannerTrailer, TrailerWindowButton } from "@/app/(main)/entry/_components/entry-trailer-section"
 import { AnimeEntryStudio } from "@/app/(main)/_features/media/_components/anime-entry-studio"
 import {
     AnimeEntryRankings,
@@ -129,9 +128,10 @@ export function MetaSection(props: { entry: Anime_Entry, details: AL_AnimeDetail
                                 Open in website
                             </Tooltip>}
 
-                            {!!entry?.media?.trailer?.id && <TrailerModal
-                                trailerId={entry?.media?.trailer?.id} trigger={
-                                <Button size="sm" intent="gray-link" className="px-0">
+                            {!!entry?.media?.trailer?.id && <TrailerWindowButton
+                                trailerId={entry.media.trailer.id}
+                                title={entry.media.title?.userPreferred}
+                                trigger={<Button size="sm" intent="gray-link" className="px-0">
                                     Trailer
                                 </Button>}
                             />}
