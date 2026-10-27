@@ -18,13 +18,19 @@ type aniListPacer struct {
 	remaining int
 	updatedAt time.Time
 	next      time.Time
-	now       func() time.Time
+	// Requests sent since the last reported budget, which that budget doesn't include yet
+	pending []time.Time
+	now     func() time.Time
+	// Closed when the budget recovers, so requests already waiting for a slot go right away
+	recovered chan struct{}
 }
 
 const (
 	aniListRateWindow = time.Minute
 	// Pacing starts once fewer than this fraction of the budget is left
 	aniListPaceBelowFraction = 3
+	// A request with no response after this long is assumed to have failed
+	aniListPendingTTL = 30 * time.Second
 	// How long a reported budget is trusted before it is considered reset
 	aniListPaceInfoTTL = aniListRateWindow
 )
@@ -32,7 +38,7 @@ const (
 var sharedAniListPacer = newAniListPacer()
 
 func newAniListPacer() *aniListPacer {
-	return &aniListPacer{now: time.Now}
+	return &aniListPacer{now: time.Now, recovered: make(chan struct{})}
 }
 
 // delay reserves a slot for the next request and returns how long to wait for it.
@@ -41,15 +47,15 @@ func (p *aniListPacer) delay() time.Duration {
 	defer p.mu.Unlock()
 
 	now := p.now()
+	p.dropExpiredPending(now)
+	pending := len(p.pending)
+	p.pending = append(p.pending, now)
 	if p.limit <= 0 || p.updatedAt.IsZero() || now.Sub(p.updatedAt) > aniListPaceInfoTTL {
 		return 0
 	}
 
 	// Count requests that are on their way, so a burst is paced before the responses come back
-	remaining := p.remaining
-	if p.remaining > 0 {
-		p.remaining--
-	}
+	remaining := p.remaining - pending
 
 	if remaining > p.limit/aniListPaceBelowFraction {
 		return 0
@@ -73,8 +79,25 @@ func (p *aniListPacer) Wait(ctx context.Context, sleep requestSleepFunc) error {
 	if sleep == nil {
 		sleep = sleepWithContext
 	}
-	if d := p.delay(); d > 0 {
-		return sleep(ctx, d)
+	p.mu.Lock()
+	recovered := p.recovered
+	p.mu.Unlock()
+
+	d := p.delay()
+	if d <= 0 {
+		return nil
+	}
+	sleepCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	go func() {
+		select {
+		case <-recovered:
+			cancel()
+		case <-sleepCtx.Done():
+		}
+	}()
+	if err := sleep(sleepCtx, d); err != nil && ctx.Err() != nil {
+		return err
 	}
 	return nil
 }
@@ -95,9 +118,28 @@ func (p *aniListPacer) Observe(headers http.Header) {
 
 	p.mu.Lock()
 	defer p.mu.Unlock()
+	// This response accounts for the oldest request still on its way
+	if len(p.pending) > 0 {
+		p.pending = p.pending[1:]
+	}
 	p.limit = limit
 	p.remaining = remaining
 	p.updatedAt = p.now()
+
+	// The window reset: drop the queue built up while the budget was low
+	if remaining > limit/aniListPaceBelowFraction && !p.next.IsZero() {
+		p.next = time.Time{}
+		close(p.recovered)
+		p.recovered = make(chan struct{})
+	}
+}
+
+func (p *aniListPacer) dropExpiredPending(now time.Time) {
+	i := 0
+	for i < len(p.pending) && now.Sub(p.pending[i]) > aniListPendingTTL {
+		i++
+	}
+	p.pending = p.pending[i:]
 }
 
 // WaitForAniListSlot lets AniList requests made outside this package (plugin fetches)
