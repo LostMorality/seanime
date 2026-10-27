@@ -31,6 +31,7 @@ type BaseCollectionSorting =
     | "PROGRESS_DESC"
     | "TITLE"
     | "TITLE_DESC"
+    | "CREATED_AT"
     | "CREATED_AT_DESC"
     | "UPDATED_AT_DESC"
 
@@ -96,6 +97,7 @@ export const COLLECTION_SORTING_OPTIONS = [
     { label: "Released recently", value: "RELEASE_DATE_DESC" },
     { label: "Oldest release", value: "RELEASE_DATE" },
     { label: "Date added (newest first)", value: "CREATED_AT_DESC" },
+    { label: "Date added (oldest first)", value: "CREATED_AT" },
     { label: "Last updated", value: "UPDATED_AT_DESC" },
 ]
 
@@ -264,6 +266,8 @@ export function filterListEntries<T extends AL_MangaCollection_MediaListCollecti
     // Sort by list dates
     if (getParamValue(params.sorting) === "CREATED_AT_DESC")
         arr = sortBy(arr, n => n.createdAt ?? 0).reverse()
+    if (getParamValue(params.sorting) === "CREATED_AT")
+        arr = sortBy(arr, n => n.createdAt ?? 0)
     if (getParamValue(params.sorting) === "UPDATED_AT_DESC")
         arr = sortBy(arr, n => n.updatedAt ?? 0).reverse()
 
@@ -372,6 +376,8 @@ export function filterCollectionEntries<T extends Anime_LibraryCollectionEntry[]
     // Sort by list dates
     if (getParamValue(params.sorting) === "CREATED_AT_DESC")
         arr = sortBy(arr, n => n.listData?.createdAt ?? 0).reverse()
+    if (getParamValue(params.sorting) === "CREATED_AT")
+        arr = sortBy(arr, n => n.listData?.createdAt ?? 0)
     if (getParamValue(params.sorting) === "UPDATED_AT_DESC")
         arr = sortBy(arr, n => n.listData?.updatedAt ?? 0).reverse()
 
