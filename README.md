@@ -51,11 +51,11 @@ This is my fork of [Seanime](https://github.com/5rahim/seanime). It isn't an off
 | Home | **Recent List Activity** row: recently added to Planning, recently completed, recently added, or recently updated |
 | Player | **Video Enhancement** menu with contrast, saturation and brightness sliders, and the settings now carry into picture-in-picture |
 | Player | Volume boost up to 300% for VideoCore and MpvCore, with Shift+Up / Shift+Down. **Merged upstream** in [#964](https://github.com/5rahim/seanime/pull/964) |
-| Plugins | Characters info+ only looks a character up when you hover it, instead of every character on page load, which cuts down on AniList rate limiting ([PR #39](https://github.com/Seanime-contributions/Seanime-Providers/pull/39)) |
+| Plugins | Characters info+ only looks a character up when you hover it, instead of every character on page load, which cuts down on AniList rate limiting. **Merged** in [PR #39](https://github.com/Seanime-contributions/Seanime-Providers/pull/39) |
 
 The new options are in **Settings › UI** (NEW EPISODE sash, trailer mode), on the Discover page itself, and in **Home › settings** for the new row.
 
-Sent upstream: [#994](https://github.com/5rahim/seanime/issues/994) (Video Enhancement), [#996](https://github.com/5rahim/seanime/issues/996) (Discover), [#964](https://github.com/5rahim/seanime/pull/964) (volume boost, merged).
+Sent upstream: [#994](https://github.com/5rahim/seanime/issues/994) (Video Enhancement), [#996](https://github.com/5rahim/seanime/issues/996) (Discover), [#964](https://github.com/5rahim/seanime/pull/964) (volume boost, merged), [Seanime-Providers #39](https://github.com/Seanime-contributions/Seanime-Providers/pull/39) (Characters info+, merged).
 
 <details open>
 <summary><b>Screenshots</b></summary>
