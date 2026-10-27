@@ -16,7 +16,7 @@ export function DiscoverFilterBar() {
                 <h2>Filters</h2>
                 <Switch
                     label="Hide watched"
-                    moreHelp="Hides anime you've completed, are watching, paused or dropped"
+                    moreHelp="Hides anime you've completed, are watching, paused or dropped, here and in Recommendations on anime pages"
                     value={hideWatched}
                     onValueChange={setHideWatched}
                     fieldClass="w-fit"

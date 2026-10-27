@@ -3,6 +3,7 @@ import { MediaCardGrid } from "@/app/(main)/_features/media/_components/media-ca
 import { MediaEntryCard } from "@/app/(main)/_features/media/_components/media-entry-card"
 import { MediaEntryDetailsSkeleton } from "@/app/(main)/_features/media/_components/media-entry-page-loading-display"
 import { useServerStatus } from "@/app/(main)/_hooks/use-server-status"
+import { useDiscoverMediaFilter } from "@/app/(main)/discover/_lib/discover-filters"
 import capitalize from "lodash/capitalize"
 import React from "react"
 
@@ -38,8 +39,10 @@ export function RelationsRecommendationsSection(props: RelationsRecommendationsS
             .filter(n => (n.node?.format !== "MANGA" && n.node?.format !== "ONE_SHOT" && n.node?.format !== "NOVEL" && n.node?.format !== "MUSIC" && n.relationType !== "CHARACTER")),
         [details?.relations?.edges])
 
-    const recommendations = React.useMemo(() => details?.recommendations?.edges?.map(edge => edge?.node?.mediaRecommendation)?.filter(Boolean) || [],
-        [details?.recommendations?.edges])
+    // Follows the Discover page's "Hide watched" switches
+    const filterMedia = useDiscoverMediaFilter()
+    const recommendations = React.useMemo(() => filterMedia(details?.recommendations?.edges?.map(edge => edge?.node?.mediaRecommendation)),
+        [details?.recommendations?.edges, filterMedia])
 
     if (loading && !details) return <MediaEntryDetailsSkeleton showCharacters={false} />
     if (!entry || !details) return null

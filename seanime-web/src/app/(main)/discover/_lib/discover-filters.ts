@@ -7,8 +7,8 @@ import React from "react"
 
 // Applies to every row whose own genre selector is on "All"
 export const __discover_globalGenresAtom = atomWithStorage<string[]>("sea-discover-global-genres", [], undefined, { getOnInit: true })
-export const __discover_hideWatchedAtom = atomWithStorage<boolean>("sea-discover-hide-watched", false, undefined, { getOnInit: true })
-export const __discover_hidePlanningAtom = atomWithStorage<boolean>("sea-discover-hide-planning", false, undefined, { getOnInit: true })
+export const __discover_hideWatchedAtom = atomWithStorage<boolean>("sea-discover-hide-watched", true, undefined, { getOnInit: true })
+export const __discover_hidePlanningAtom = atomWithStorage<boolean>("sea-discover-hide-planning", true, undefined, { getOnInit: true })
 
 const WATCHED_STATUSES: AL_MediaListStatus[] = ["CURRENT", "COMPLETED", "REPEATING", "PAUSED", "DROPPED"]
 
