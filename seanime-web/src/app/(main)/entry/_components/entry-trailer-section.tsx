@@ -75,7 +75,8 @@ export function EntryTrailerSection({ media }: { media: AL_BaseAnime | undefined
         }, { threshold: 0.25 })
         observer.observe(containerRef.current)
         return () => observer.disconnect()
-    }, [command, trailerId, mode])
+        // The section only renders once the embed address is known, so watch again when it arrives
+    }, [command, trailerId, mode, electronEmbedAddress])
 
     const onPlayerLoad = React.useCallback(() => {
         window.setTimeout(syncPlayer, 1500)
