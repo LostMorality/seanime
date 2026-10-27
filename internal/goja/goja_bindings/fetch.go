@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"seanime/internal/api/anilist"
 	"seanime/internal/security"
 	"seanime/internal/util"
 	"strings"
@@ -478,6 +479,19 @@ func (f *Fetch) Fetch(call goja.FunctionCall) goja.Value {
 		var resp *req.Response
 		var err error
 
+		// Plugin requests to AniList share the server's rate-limit block and pacing,
+		// so a plugin can't burn through the budget and get everything else blocked
+		isAniList := false
+		if lower := strings.ToLower(url); strings.HasPrefix(lower, "https://graphql.anilist.co") || strings.HasPrefix(lower, "http://graphql.anilist.co") {
+			isAniList = true
+			if werr := anilist.WaitForAniListSlot(request.Context()); werr != nil {
+				f.vmResponseCh <- func() {
+					_ = reject(NewError(f.vm, werr))
+				}
+				return
+			}
+		}
+
 		switch options.Method {
 		case "GET":
 			resp, err = request.Get(url)
@@ -502,6 +516,9 @@ func (f *Fetch) Fetch(call goja.FunctionCall) goja.Value {
 				_ = reject(NewError(f.vm, err))
 			}
 			return
+		}
+		if isAniList {
+			anilist.ObserveAniListResponse(resp.StatusCode, resp.Header)
 		}
 
 		rawBody := resp.Bytes()
