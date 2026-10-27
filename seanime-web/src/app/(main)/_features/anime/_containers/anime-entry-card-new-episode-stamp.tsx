@@ -41,10 +41,11 @@ export function AnimeEntryCardNewEpisodeStamp(props: AnimeEntryCardNewEpisodeSta
                 )}
             >
                 <span
-                    className="text-[1.15rem] font-black tracking-[0.3em] pl-[0.3em] [text-shadow:0_1px_3px_rgba(0,0,0,0.6)]"
+                    className="text-[1.05rem] font-black tracking-[0.12em] pl-[0.12em] [text-shadow:0_1px_3px_rgba(0,0,0,0.6)]"
                     style={{ fontFamily: "\"Yu Gothic UI\", \"Yu Gothic\", \"Hiragino Sans\", \"Noto Sans JP\", Meiryo, sans-serif" }}
                 >
-                    最新話
+                    {/* Same wording as the English line: "new episode", and "new episodes: 3" */}
+                    {unwatched > 1 ? `新エピソード ${unwatched}話` : "新エピソード"}
                 </span>
                 <span className="text-[0.6rem] font-extrabold tracking-[0.25em] pl-[0.25em] mt-[3px]">
                     {unwatched > 1 ? `${unwatched} NEW EPISODES` : "NEW EPISODE"}
