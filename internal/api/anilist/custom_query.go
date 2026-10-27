@@ -59,6 +59,10 @@ func customQuery(body []byte, logger *zerolog.Logger, token ...string) (data int
 		return nil, err
 	}
 
+	if err = sharedAniListPacer.Wait(req.Context(), sleepWithContext); err != nil {
+		return nil, err
+	}
+
 	var resp *http.Response
 	resp, rlRemainingStr, err = doAniListRequestWithRetries(
 		alHttpClient(),
@@ -72,6 +76,7 @@ func customQuery(body []byte, logger *zerolog.Logger, token ...string) (data int
 	if err != nil {
 		return nil, err
 	}
+	sharedAniListPacer.Observe(resp.Header)
 
 	defer resp.Body.Close()
 
