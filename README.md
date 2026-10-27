@@ -44,7 +44,7 @@ This is my fork of [Seanime](https://github.com/5rahim/seanime). It isn't an off
 |---|---|
 | Discover | **Hide watched** and **Also hide Planning** switches (on by default), a genre filter on every row, and a **Recommended for You** row based on the genres you watch and how you score them |
 | Anime pages | Recommendations skip anime you've already seen and fetch more from AniList when most of the top 8 are hidden |
-| Anime pages | The trailer plays in the banner, Steam-style: muted, sound while your mouse is over the header, then it fades back to the banner image when it ends. Hover the header for buttons: **Sound on** (stays on), **Replay**, and **Watch trailer**, which opens it in a window from where you left off with a **Fullscreen** button. It pauses when you scroll away or switch apps. It can also go below the episodes, be click-to-play, or be turned off |
+| Anime pages | A Steam-style gallery in the banner: every trailer and PV for the show (from MyAnimeList, not just AniList's one), then its artwork, then it settles on the banner image. Videos are muted with sound while your mouse is over the header, and everything fades in and out. Hover the header for **◀ ▶** to skip, **Sound on** (stays on), **Play again**, and **Trailers**, which opens a window with every trailer listed, picking up where the banner was, plus **Fullscreen**. It pauses when you scroll away or switch apps. Settings can make it the main trailer only, put it below the episodes, make it click-to-play, or turn it off |
 | Anime cards | A **新エピソード / NEW EPISODE** sash across the cover of airing shows you're watching when an episode you haven't seen is out |
 | Anime cards | Right-click the **+** (Add to list) button to add as Watching, Planning, Completed, Paused or Dropped. A normal click still adds as Planning |
 | My Lists | **Date added (oldest first)** sort |
@@ -62,9 +62,9 @@ Sent upstream: [#994](https://github.com/5rahim/seanime/issues/994) (Video Enhan
 
 <br>
 
-**Trailer in the banner**
+**Trailer and artwork gallery in the banner**
 
-<img src="https://raw.githubusercontent.com/LostMorality/seanime/5c54faf0ed79ce12ea0431c28ceb78fca91f5a39/shots/banner-trailer.png" width="900" alt="Trailer playing in the anime page banner">
+<img src="https://raw.githubusercontent.com/LostMorality/seanime/197333980a331b9400dc6bc95b4e4d94ced7a8e3/shots/banner-gallery.png" width="900" alt="Artwork from the gallery showing in the anime page banner, with skip and Trailers buttons">
 
 **Discover filters and Recommended for You**
 
