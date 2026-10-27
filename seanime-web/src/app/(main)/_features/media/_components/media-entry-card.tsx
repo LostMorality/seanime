@@ -11,6 +11,7 @@ import { getAnimeLibraryEntryAtom } from "@/app/(main)/_atoms/anime-library-coll
 import { getMangaCollectionEntryAtom } from "@/app/(main)/_atoms/manga-collection.atoms"
 import { usePlayNext } from "@/app/(main)/_atoms/playback.atoms"
 import { ToggleLockFilesButton } from "@/app/(main)/_features/anime-library/_containers/toggle-lock-files-button"
+import { AnimeEntryCardNewEpisodeStamp } from "@/app/(main)/_features/anime/_containers/anime-entry-card-new-episode-stamp"
 import { AnimeEntryCardUnwatchedBadge } from "@/app/(main)/_features/anime/_containers/anime-entry-card-unwatched-badge"
 import { SeaContextMenu } from "@/app/(main)/_features/context-menu/sea-context-menu"
 import { useLibraryExplorer } from "@/app/(main)/_features/library-explorer/library-explorer.atoms"
@@ -423,6 +424,11 @@ export function MediaEntryCard<T extends "anime" | "manga">(props: MediaEntryCar
                 onClick={onClick}
                 hideReleasingBadge={hideReleasingBadge}
             >
+                {type === "anime" && <AnimeEntryCardNewEpisodeStamp
+                    media={media as AL_BaseAnime}
+                    progress={listData?.progress}
+                    listStatus={listData?.status}
+                />}
                 <div data-media-entry-card-body-progress-badge-container className="absolute z-[10] left-0 bottom-0 flex items-end">
                     <MediaEntryProgressBadge
                         progress={listData?.progress}
