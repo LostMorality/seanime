@@ -2,6 +2,7 @@ import { AL_MangaDetailsById_Media, Manga_Entry, Nullish } from "@/api/generated
 import { MediaCardGrid } from "@/app/(main)/_features/media/_components/media-card-grid"
 import { MediaEntryCard } from "@/app/(main)/_features/media/_components/media-entry-card"
 import { MediaEntryDetailsSkeleton } from "@/app/(main)/_features/media/_components/media-entry-page-loading-display"
+import { useMangaListMediaFilter } from "@/app/(main)/discover/_lib/discover-filters"
 import capitalize from "lodash/capitalize"
 import React from "react"
 
@@ -25,7 +26,11 @@ export function MangaRecommendations(props: MangaRecommendationsProps) {
     const anime = details?.relations?.edges?.filter(Boolean)?.filter(edge => edge?.node?.type === "ANIME" &&
         (edge?.node?.format === "TV" || edge?.node?.format === "MOVIE" || edge?.node?.format === "TV_SHORT"))?.slice(0, 3)
 
-    const recommendations = details?.recommendations?.edges?.map(edge => edge?.node?.mediaRecommendation)?.filter(Boolean)?.slice(0, 6) || []
+    // Follows the Discover page's "Hide watched" switches, like anime recommendations
+    const filterMedia = useMangaListMediaFilter()
+    const recommendations = React.useMemo(() => filterMedia(details?.recommendations?.edges?.map(edge => edge?.node?.mediaRecommendation))
+        .filter(m => m.id !== details?.id)
+        .slice(0, 6), [details?.recommendations?.edges, details?.id, filterMedia])
 
     if (loading && !details) return <MediaEntryDetailsSkeleton isMangaPage showCharacters={false} />
     if (!entry || !details) return null
