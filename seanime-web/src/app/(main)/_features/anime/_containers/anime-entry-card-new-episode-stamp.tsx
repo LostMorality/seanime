@@ -1,6 +1,5 @@
 import { AL_BaseAnime, AL_MediaListStatus, Nullish } from "@/api/generated/types"
 import { cn } from "@/components/ui/core/styling"
-import { anilist_getCurrentEpisodes } from "@/lib/helpers/media"
 import { useAtomValue } from "jotai/react"
 import { atomWithStorage } from "jotai/utils"
 import React from "react"
@@ -21,9 +20,13 @@ export function AnimeEntryCardNewEpisodeStamp(props: AnimeEntryCardNewEpisodeSta
     const enabled = useAtomValue(__ui_newEpisodeStampAtom)
 
     if (!enabled || !media || media.status !== "RELEASING") return null
-    if (listStatus !== "CURRENT" && listStatus !== "REPEATING") return null
+    // Rewatch progress starts over, so on REPEATING the gap is episodes already seen, not new ones
+    if (listStatus !== "CURRENT") return null
 
-    const unwatched = anilist_getCurrentEpisodes(media) - (progress ?? 0)
+    // Without a next episode, `episodes` is the planned total, not what has aired
+    if (!media.nextAiringEpisode?.episode) return null
+
+    const unwatched = media.nextAiringEpisode.episode - 1 - (progress ?? 0)
     if (unwatched <= 0) return null
 
     return (
