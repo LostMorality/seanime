@@ -30,6 +30,8 @@ type AnilistMediaEntryModalProps = {
     hideButton?: boolean
     type?: "anime" | "manga"
     forceModal?: boolean
+    // Lets the card keep its hover popup visible while the add-to-list menu is open
+    onAddMenuOpenChange?: (open: boolean) => void
 }
 
 export const mediaListDataSchema = defineSchema(({ z, presets }) => z.object({
@@ -89,7 +91,7 @@ export const AnilistMediaEntryModal = (props: AnilistMediaEntryModalProps) => {
     const [open, toggle] = useToggle(false)
     const [repeat, setRepeat] = React.useState<number | "">(0)
 
-    const { children, media, listData, hideButton, type = "anime", forceModal, ...rest } = props
+    const { children, media, listData, hideButton, type = "anime", forceModal, onAddMenuOpenChange, ...rest } = props
 
     const user = useCurrentUser()
 
@@ -161,6 +163,7 @@ export const AnilistMediaEntryModal = (props: AnilistMediaEntryModalProps) => {
                     loading={isEditing || isDeleting}
                     hidden={isSuccess}
                     onAdd={addWithStatus}
+                    onMenuOpenChange={onAddMenuOpenChange}
                 />}
             </>}
 
@@ -206,14 +209,25 @@ export const AnilistMediaEntryModal = (props: AnilistMediaEntryModalProps) => {
 /**
  * Left click adds the entry as Planning, right click opens a menu to pick the status.
  */
-function AddToListButton({ media, type, loading, hidden, onAdd }: {
+function AddToListButton({ media, type, loading, hidden, onAdd, onMenuOpenChange }: {
     media?: AL_BaseAnime | AL_BaseManga
     type: "anime" | "manga"
     loading: boolean
     hidden: boolean
     onAdd: (status: AL_MediaListStatus) => void
+    onMenuOpenChange?: (open: boolean) => void
 }) {
-    const [menuOpen, setMenuOpen] = React.useState(false)
+    const [menuOpen, _setMenuOpen] = React.useState(false)
+    const setMenuOpen = React.useCallback((open: boolean) => {
+        _setMenuOpen(open)
+        onMenuOpenChange?.(open)
+    }, [onMenuOpenChange])
+
+    // Don't leave the card stuck open if the button goes away with the menu open
+    React.useEffect(() => {
+        return () => onMenuOpenChange?.(false)
+    }, [onMenuOpenChange])
+
     const notReleased = media?.status === "NOT_YET_RELEASED"
 
     const statuses: { value: AL_MediaListStatus, label: string }[] = notReleased
@@ -230,7 +244,8 @@ function AddToListButton({ media, type, loading, hidden, onAdd }: {
         <DropdownMenu
             open={menuOpen}
             onOpenChange={setMenuOpen}
-            // A modal menu blocks pointer events on the page, which closes the card's hover popup and the menu with it
+            // A modal menu blocks pointer events on the page, which closes the card's hover popup and the menu with it.
+            // The menu is portaled out of the card, so the card also keeps its popup visible via onMenuOpenChange.
             allowOutsideInteraction
             className="min-w-[10rem]"
             trigger={<span
