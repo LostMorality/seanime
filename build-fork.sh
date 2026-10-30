@@ -86,4 +86,6 @@ cp -R seanime-web/out-denshi seanime-denshi/web-denshi
 )
 
 printf '\n\033[32mDone: the app is in %s/seanime-denshi/dist\033[0m\n' "$root"
-ls seanime-denshi/dist | grep -E '\.(dmg|zip|AppImage)$' || true
+for f in seanime-denshi/dist/*.dmg seanime-denshi/dist/*.zip seanime-denshi/dist/*.AppImage; do
+    if [[ -e "$f" ]]; then echo "  $f"; fi
+done
