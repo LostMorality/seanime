@@ -59,7 +59,8 @@ func customQuery(body []byte, logger *zerolog.Logger, token ...string) (data int
 		return nil, err
 	}
 
-	if err = sharedAniListPacer.Wait(req.Context(), sleepWithContext); err != nil {
+	var releaseSlot func()
+	if releaseSlot, err = sharedAniListPacer.Wait(req.Context(), sleepWithContext); err != nil {
 		return nil, err
 	}
 
@@ -74,6 +75,8 @@ func customQuery(body []byte, logger *zerolog.Logger, token ...string) (data int
 		},
 	)
 	if err != nil {
+		// No response to report, so the pacer stops counting this request
+		releaseSlot()
 		return nil, err
 	}
 	sharedAniListPacer.Observe(resp.Header)
