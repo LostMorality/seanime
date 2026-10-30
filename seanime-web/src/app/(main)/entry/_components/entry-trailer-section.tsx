@@ -49,7 +49,7 @@ export function EntryTrailerSection({ media }: { media: AL_BaseAnime | undefined
         const player = playerRef.current
         if (!player) return
         if (__isElectronDesktop__) {
-            player.executeJavaScript?.(`window.__yt && window.__yt(${JSON.stringify(func)})`).catch(() => {})
+            runInWebview(player, `window.__yt && window.__yt(${JSON.stringify(func)})`)
         } else {
             player.contentWindow?.postMessage(JSON.stringify({ event: "command", func, args: [] }), "*")
         }
@@ -60,28 +60,37 @@ export function EntryTrailerSection({ media }: { media: AL_BaseAnime | undefined
     const visibleRef = React.useRef(false)
     const hoveredRef = React.useRef(false)
 
+    // Pauses out of view; only muted mode resumes on its own, so a trailer the user paused stays paused
+    const applyVisibility = React.useCallback(() => {
+        if (!visibleRef.current) command("pauseVideo")
+        else if (mode === "muted") command("playVideo")
+    }, [command, mode])
+
     // Commands sent before the YouTube player is ready get dropped, so the current state is re-applied after it loads
     const syncPlayer = React.useCallback(() => {
-        command(visibleRef.current ? "playVideo" : "pauseVideo")
+        applyVisibility()
         if (mode === "muted") command(hoveredRef.current ? "unMute" : "mute")
-    }, [command, mode])
+    }, [applyVisibility, command, mode])
 
     React.useEffect(() => {
         if (!containerRef.current) return
         const observer = new IntersectionObserver(([entry]) => {
             visibleRef.current = entry.isIntersecting
             if (entry.isIntersecting) setSeen(true)
-            command(entry.isIntersecting ? "playVideo" : "pauseVideo")
+            applyVisibility()
         }, { threshold: 0.25 })
         observer.observe(containerRef.current)
         return () => observer.disconnect()
         // The section only renders once the embed address is known, so watch again when it arrives
-    }, [command, trailerId, mode, electronEmbedAddress])
+    }, [applyVisibility, trailerId, mode, electronEmbedAddress])
 
+    const syncTimersRef = React.useRef<number[]>([])
     const onPlayerLoad = React.useCallback(() => {
-        window.setTimeout(syncPlayer, 1500)
-        window.setTimeout(syncPlayer, 4000)
+        syncTimersRef.current.forEach(t => window.clearTimeout(t))
+        syncTimersRef.current = [window.setTimeout(syncPlayer, 1500), window.setTimeout(syncPlayer, 4000)]
     }, [syncPlayer])
+
+    React.useEffect(() => () => syncTimersRef.current.forEach(t => window.clearTimeout(t)), [])
 
     React.useEffect(() => {
         const player = playerRef.current
@@ -221,12 +230,26 @@ function useAnimeGallery(media: AL_BaseAnime | undefined, enabled: boolean) {
 }
 
 /**
+ * Runs code in an Electron webview. A webview that is detached or not ready yet throws instead of rejecting.
+ */
+function runInWebview(player: any, js: string, userGesture = false): Promise<any> | undefined {
+    try {
+        const result = player.executeJavaScript?.(js, userGesture)
+        result?.catch?.(() => {})
+        return result
+    }
+    catch {
+        return undefined
+    }
+}
+
+/**
  * Sends a YouTube player command to an Electron webview (through the local player page) or a plain iframe.
  */
 function sendPlayerCommand(player: any, func: string, args: unknown[] = []) {
     if (!player) return
     if (__isElectronDesktop__) {
-        player.executeJavaScript?.(`window.__yt && window.__yt(${JSON.stringify(func)}, ${JSON.stringify(args)})`).catch(() => {})
+        runInWebview(player, `window.__yt && window.__yt(${JSON.stringify(func)}, ${JSON.stringify(args)})`)
     } else {
         player.contentWindow?.postMessage(JSON.stringify({ event: "command", func, args }), "*")
     }
@@ -257,6 +280,11 @@ export function EntryBannerTrailer({ media }: { media: AL_BaseAnime | undefined 
     const [windowOpen, setWindowOpen] = React.useState(false)
     const [windowVideo, setWindowVideo] = React.useState({ index: 0, start: 0 })
     const volumeTimerRef = React.useRef<number | undefined>(undefined)
+    // Last volume sent, so a ramp starts from what's playing now
+    const volumeRef = React.useRef(0)
+    // YouTube's iframe messages only carry the fields that changed, so the last known values are kept here
+    const timeRef = React.useRef(0)
+    const durationRef = React.useRef(0)
     // Where to go once the current fade-out finishes (null = stop on the banner)
     const afterFadeRef = React.useRef<number | null>(null)
     const lastStateRef = React.useRef<number | null>(null)
@@ -278,28 +306,23 @@ export function EntryBannerTrailer({ media }: { media: AL_BaseAnime | undefined 
     const item = items[index] as GalleryItem | undefined
     const videoId = item?.kind === "video" ? item.id : undefined
     const enabled = isBannerMode && gallery.ready && items.length > 0 && (!__isElectronDesktop__ || !!electronEmbedAddress)
-    const audible = phase === "playing" && !!videoId && (sound === "on" || (sound === "hover" && hovered))
-
-    React.useEffect(() => {
-        window.clearTimeout(revealTimerRef.current)
-        revealTimerRef.current = undefined
-        lastStateRef.current = null
-        setPhase("loading")
-        setIndex(0)
-        setProgress({ time: 0, duration: 0 })
-        setSound("hover")
-    }, [media?.id])
+    // Pause while the banner is scrolled away or hidden (theme hides it), the app is hidden, or the trailer window is open
+    const paused = scrolledAway || pageHidden || windowOpen || size.width === 0
+    const wantsSound = sound === "on" || (sound === "hover" && hovered)
+    const audible = phase === "playing" && !!videoId && !paused && wantsSound
 
     const command = React.useCallback((func: string, args: unknown[] = []) => sendPlayerCommand(playerRef.current, func, args), [])
 
     // Volume ramps instead of switching sound on and off abruptly
-    const rampVolume = React.useCallback((from: number, to: number, ms: number, onDone?: () => void) => {
+    const rampVolume = React.useCallback((to: number, ms: number, onDone?: () => void) => {
         window.clearInterval(volumeTimerRef.current)
+        const from = volumeRef.current
         const steps = 10
         let step = 0
         volumeTimerRef.current = window.setInterval(() => {
             step++
-            command("setVolume", [Math.round(from + (to - from) * (step / steps))])
+            volumeRef.current = Math.round(from + (to - from) * (step / steps))
+            command("setVolume", [volumeRef.current])
             if (step >= steps) {
                 window.clearInterval(volumeTimerRef.current)
                 onDone?.()
@@ -315,34 +338,36 @@ export function EntryBannerTrailer({ media }: { media: AL_BaseAnime | undefined 
     React.useEffect(() => {
         if (phase === "loading" || !videoId) return
         if (audible) {
-            command("setVolume", [0])
+            command("setVolume", [volumeRef.current])
             command("unMute")
-            rampVolume(0, 100, 600)
+            rampVolume(100, 600)
         } else {
-            rampVolume(100, 0, 400, () => command("mute"))
+            rampVolume(0, 400, () => command("mute"))
         }
     }, [audible])
 
-    // Pause while the banner is scrolled away, the app is hidden, or the trailer window is open
-    const paused = scrolledAway || pageHidden || windowOpen
     const shouldPlay = phase === "playing" && !paused
     // Only resume what was paused here: telling a playing video to play makes YouTube flash its pause icon
     const pausedRef = React.useRef(false)
+    // Also runs on the phase change, so a video that starts while paused gets paused when it's revealed
     React.useEffect(() => {
         if (phase === "loading" || phase === "ended" || !videoId) return
         if (!shouldPlay) {
-            command("pauseVideo")
+            if (!pausedRef.current) command("pauseVideo")
             pausedRef.current = true
         } else if (pausedRef.current) {
             command("playVideo")
             pausedRef.current = false
         }
-    }, [shouldPlay])
+    }, [shouldPlay, phase])
 
     React.useEffect(() => {
         if (!enabled) return
         const onScroll = () => setScrolledAway(window.scrollY > 300)
         const onVisibility = () => setPageHidden(document.hidden)
+        // The page may already be scrolled or hidden by the time the gallery starts
+        onScroll()
+        onVisibility()
         window.addEventListener("scroll", onScroll, { passive: true })
         document.addEventListener("visibilitychange", onVisibility)
         return () => {
@@ -391,12 +416,41 @@ export function EntryBannerTrailer({ media }: { media: AL_BaseAnime | undefined 
         pausedRef.current = false
         window.clearTimeout(revealTimerRef.current)
         revealTimerRef.current = undefined
+        // The new player starts muted
+        window.clearInterval(volumeTimerRef.current)
+        volumeRef.current = 0
+        timeRef.current = 0
+        durationRef.current = 0
         setProgress({ time: 0, duration: 0 })
         setFadeMs(BANNER_FADE_MS)
         setIndex(i)
         setPlayKey(k => k + 1)
         setPhase("loading")
     }, [])
+
+    // Another anime in the same page: start over with a fresh player, so the old video's reports can't reach the new one
+    const mediaIdRef = React.useRef(media?.id)
+    React.useEffect(() => {
+        const prev = mediaIdRef.current
+        mediaIdRef.current = media?.id
+        if (prev === undefined || prev === media?.id) return
+        show(0)
+        setSound("hover")
+    }, [media?.id])
+
+    // A hidden banner unmounts the player, so start the current video over when the banner comes back
+    // (the first measurement isn't a comeback, the player just hasn't mounted yet)
+    const hasSize = size.width > 0
+    const sizeStateRef = React.useRef<"unmeasured" | "shown" | "hidden">("unmeasured")
+    React.useEffect(() => {
+        const prev = sizeStateRef.current
+        if (!hasSize) {
+            if (prev === "shown") sizeStateRef.current = "hidden"
+            return
+        }
+        sizeStateRef.current = "shown"
+        if (prev === "hidden" && items[index]?.kind === "video" && phaseRef.current !== "ended") show(index)
+    }, [hasSize])
 
     React.useEffect(() => {
         if (phase !== "fading") return
@@ -440,10 +494,11 @@ export function EntryBannerTrailer({ media }: { media: AL_BaseAnime | undefined 
     // Electron: the local player page keeps the YouTube state in window variables
     React.useEffect(() => {
         const player = playerRef.current
-        if (!enabled || !player || !videoId || !__isElectronDesktop__) return
+        if (!enabled || !player || !videoId || phase === "ended" || !__isElectronDesktop__) return
         const interval = window.setInterval(() => {
-            player.executeJavaScript?.("JSON.stringify([window.__ytState ?? null, window.__ytTime, window.__ytDur])")
-                .then((json: string) => {
+            if (!player.isConnected) return
+            runInWebview(player, "JSON.stringify([window.__ytState ?? null, window.__ytTime, window.__ytDur])")
+                ?.then((json: string) => {
                     const [state, time, duration] = JSON.parse(json) as [number | null, number, number]
                     onPlayerReport(state, time, duration)
                 })
@@ -451,7 +506,7 @@ export function EntryBannerTrailer({ media }: { media: AL_BaseAnime | undefined 
         }, 500)
         return () => window.clearInterval(interval)
         // The player is only rendered once the banner size is known
-    }, [enabled, videoId, playKey, size.width > 0, onPlayerReport])
+    }, [enabled, videoId, playKey, size.width > 0, phase === "ended", onPlayerReport])
 
     // Browser: listen to the iframe's own messages
     React.useEffect(() => {
@@ -460,15 +515,19 @@ export function EntryBannerTrailer({ media }: { media: AL_BaseAnime | undefined 
             if (e.source !== playerRef.current?.contentWindow) return
             try {
                 const d = JSON.parse(e.data) as { event?: string, info?: any }
-                if (d.event === "onStateChange") onPlayerReport(d.info, progress.time, progress.duration)
-                else if (d.info) onPlayerReport(d.info.playerState ?? null, d.info.currentTime ?? 0, d.info.duration ?? 0)
+                if (d.event === "onStateChange") onPlayerReport(d.info, timeRef.current, durationRef.current)
+                else if (d.info) {
+                    if (typeof d.info.currentTime === "number") timeRef.current = d.info.currentTime
+                    if (typeof d.info.duration === "number") durationRef.current = d.info.duration
+                    onPlayerReport(d.info.playerState ?? null, timeRef.current, durationRef.current)
+                }
             }
             catch {
             }
         }
         window.addEventListener("message", onMessage)
         return () => window.removeEventListener("message", onMessage)
-    }, [enabled, videoId, onPlayerReport, progress.time, progress.duration])
+    }, [enabled, videoId, onPlayerReport])
 
     const onIframeLoad = () => {
         playerRef.current?.contentWindow?.postMessage(JSON.stringify({ event: "listening", id: 1, channel: "widget" }), "*")
@@ -492,7 +551,8 @@ export function EntryBannerTrailer({ media }: { media: AL_BaseAnime | undefined 
             ? { index: current, start: Math.floor(progress.time) }
             : { index: 0, start: 0 })
         setWindowOpen(true)
-        // The banner goes back to its image while the trailer window is open
+        // The banner goes back to its image while the trailer window is open (also when a fade is already running)
+        afterFadeRef.current = null
         fadeTo(null)
     }
 
@@ -501,6 +561,8 @@ export function EntryBannerTrailer({ media }: { media: AL_BaseAnime | undefined 
     const showItem = phase !== "ended"
     const webUrl = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&controls=0&mute=1&disablekb=1&iv_load_policy=3&cc_load_policy=1&cc_lang_pref=en&hl=en&rel=0&playsinline=1&enablejsapi=1`
     const label = item.kind === "video" ? item.title : "Artwork"
+    // With the banner hidden (theme setting) only the Trailers button is left
+    const galleryShown = showItem && size.width > 0
 
     const controls = (
         <div
@@ -512,25 +574,25 @@ export function EntryBannerTrailer({ media }: { media: AL_BaseAnime | undefined 
                 (phase === "loading" && index === 0 && playKey === 0) ? "opacity-0 pointer-events-none" : "opacity-100",
             )}
         >
-            {items.length > 1 && phase !== "ended" && <BannerTrailerButton label="Previous" onClick={() => skip(index - 1)} disabled={index === 0}>
+            {items.length > 1 && galleryShown && <BannerTrailerButton label="Previous" onClick={() => skip(index - 1)} disabled={index === 0}>
                 <LuChevronLeft />
             </BannerTrailerButton>}
-            {phase !== "ended" && !!videoId && <BannerTrailerButton
-                label={sound === "on" ? "Mute" : "Sound on"}
-                onClick={() => setSound(s => s === "on" ? "off" : "on")}
+            {galleryShown && !!videoId && <BannerTrailerButton
+                label={wantsSound ? "Mute" : "Sound on"}
+                onClick={() => setSound(wantsSound ? "off" : "on")}
             >
-                {audible ? <LuVolume2 /> : <LuVolumeX />}
+                {wantsSound ? <LuVolume2 /> : <LuVolumeX />}
             </BannerTrailerButton>}
-            {phase === "ended" && <BannerTrailerButton label={items.length > 1 ? "Play again" : "Replay trailer"} onClick={replay}>
+            {phase === "ended" && size.width > 0 && <BannerTrailerButton label={items.length > 1 ? "Play again" : "Replay trailer"} onClick={replay}>
                 <LuRotateCcw />
             </BannerTrailerButton>}
-            {items.length > 1 && phase !== "ended" && <span
+            {items.length > 1 && galleryShown && <span
                 data-entry-banner-trailer-label
                 className="px-1.5 max-w-[11rem] truncate text-[0.7rem] font-medium text-white/75 tabular-nums"
             >
                 {label} <span className="text-white/45">{index + 1}/{items.length}</span>
             </span>}
-            {items.length > 1 && phase !== "ended" && <BannerTrailerButton
+            {items.length > 1 && galleryShown && <BannerTrailerButton
                 label="Next"
                 onClick={() => skip(index + 1)}
                 disabled={index === items.length - 1}
@@ -540,7 +602,7 @@ export function EntryBannerTrailer({ media }: { media: AL_BaseAnime | undefined 
             {videos.length > 0 && <BannerTrailerButton label={videos.length > 1 ? "Watch trailers" : "Watch trailer"} onClick={openWindow} wide>
                 <LuMaximize2 /><span className="text-xs font-semibold tracking-wide">{videos.length > 1 ? "Trailers" : "Trailer"}</span>
             </BannerTrailerButton>}
-            {phase !== "ended" && <div className="absolute left-3 right-3 bottom-0 h-[2px] rounded-full bg-white/15 overflow-hidden">
+            {galleryShown && <div className="absolute left-3 right-3 bottom-0 h-[2px] rounded-full bg-white/15 overflow-hidden">
                 {item.kind === "video"
                     ? <div
                         className="h-full bg-white/80 transition-[width] duration-500 ease-linear"
@@ -711,16 +773,19 @@ export function TrailerWindow({ open, onOpenChange, videos, initialIndex = 0, st
     const playerRef = React.useRef<any>(null)
     const [current, setCurrent] = React.useState({ index: initialIndex, start })
 
-    React.useEffect(() => {
+    // Picked up during render, so the first open render already mounts the right video
+    const [wasOpen, setWasOpen] = React.useState(open)
+    if (open !== wasOpen) {
+        setWasOpen(open)
         if (open) setCurrent({ index: initialIndex, start })
-    }, [open])
+    }
 
     const goFullscreen = () => {
         const player = playerRef.current
         if (!player) return
         if (__isElectronDesktop__) {
             // Fullscreen needs a user gesture inside the player page
-            player.executeJavaScript?.("window.__ytFullscreen && window.__ytFullscreen()", true).catch(() => {})
+            runInWebview(player, "window.__ytFullscreen && window.__ytFullscreen()", true)
         } else {
             player.requestFullscreen?.()
         }
