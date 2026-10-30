@@ -4,19 +4,17 @@ import { DiscoverGenreSelector } from "@/app/(main)/discover/_components/discove
 import { useDiscoverRecommendedAnime } from "@/app/(main)/discover/_lib/discover-recommended"
 import { __discover_recommendedGenresAtom } from "@/app/(main)/discover/_lib/handle-discover-queries"
 import { Carousel, CarouselContent, CarouselDotButtons } from "@/components/ui/carousel"
-import { useAtomValue } from "jotai/react"
 import React from "react"
 
 export function DiscoverRecommended() {
 
     const ref = React.useRef<HTMLDivElement>(null)
-    const { media, isLoading, topGenres, hasProfile } = useDiscoverRecommendedAnime(ref)
-    const selectedGenres = useAtomValue(__discover_recommendedGenresAtom)
+    const { media, isLoading, isError, topGenres, hasProfile, usingProfile } = useDiscoverRecommendedAnime(ref)
 
     return (
         <div className="space-y-2 z-[5] relative" data-discover-page-anime-recommended-container>
             <h2>Recommended for You</h2>
-            {hasProfile && !selectedGenres.length && <p className="text-[--muted] px-2">
+            {hasProfile && usingProfile && <p className="text-[--muted] px-2">
                 Because you like {topGenres.join(", ")}
             </p>}
             <Carousel
@@ -47,7 +45,9 @@ export function DiscoverRecommended() {
                 </CarouselContent>
             </Carousel>
             {!isLoading && !media.length && <p className="text-[--muted] px-2">
-                {hasProfile ? "Nothing new to recommend in these genres." : "Watch and rate a few anime to get recommendations."}
+                {isError ? "Couldn't load recommendations."
+                    : (hasProfile || !usingProfile) ? "Nothing new to recommend in these genres."
+                        : "Watch and rate a few anime to get recommendations."}
             </p>}
         </div>
     )
