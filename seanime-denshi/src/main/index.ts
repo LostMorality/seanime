@@ -422,6 +422,17 @@ app.on("child-process-gone", (event: Electron.Event, details: any) => {
 })
 
 // Setup autoUpdater events with improved error handling
+/** Set by build-fork through electron-builder's extraMetadata, which writes it into the packaged package.json. */
+function isForkBuild() {
+    try {
+        const flag = JSON.parse(fs.readFileSync(path.join(app.getAppPath(), "package.json"), "utf8")).seanimeForkBuild
+        return flag === true || flag === "true"
+    }
+    catch {
+        return false
+    }
+}
+
 autoUpdater.on("checking-for-update", () => {
     logger.updater.info("Checking for update")
 })
@@ -1201,6 +1212,10 @@ app.whenReady().then(async () => {
     }
     logger.settings.info("Loaded", denshiSettings)
 
+    // A build of a fork (made with build-fork) must not replace itself with an official release
+    const forkBuild = isForkBuild()
+    if (forkBuild) logger.updater.info("Fork build: automatic updates are off")
+
     let currentUpdateChannel = denshiSettings.updateChannel
     const { ok, fallback } = await fetchGithubStatus()
     // if github is down, use fallback channel
@@ -1231,8 +1246,8 @@ app.whenReady().then(async () => {
     }
 
     autoUpdater.setFeedURL(updateConfig as any)
-    autoUpdater.autoDownload = true
-    autoUpdater.autoInstallOnAppQuit = true
+    autoUpdater.autoDownload = !forkBuild
+    autoUpdater.autoInstallOnAppQuit = !forkBuild
     autoUpdater.disableWebInstaller = true
 
     if (!_development && (process.platform === "darwin" || process.platform === "win32")) {
@@ -1257,6 +1272,7 @@ app.whenReady().then(async () => {
     ipcMain.handle("check-for-updates", async () => {
         try {
             logger.updater.info("Manual update check requested")
+            if (forkBuild) return { updateAvailable: false, updateInfo: undefined, updateDownloaded: false }
             const result = await autoUpdater.checkForUpdates()
             return {
                 updateAvailable: !!result?.updateInfo,
@@ -1272,6 +1288,9 @@ app.whenReady().then(async () => {
 
     ipcMain.handle("install-update", async () => {
         try {
+            if (forkBuild) {
+                throw new Error("Updates are turned off in this build. Install the official app from seanime.app to switch back.")
+            }
             if (!updateDownloaded) {
                 logger.updater.info("Install requested before download completed; starting download")
                 // Trigger download if not already downloaded
@@ -1317,7 +1336,7 @@ app.whenReady().then(async () => {
         await launchSeanimeServer(false)
         logStartupEvent("Server launched successfully")
         // Check for updates only after server launch and main window setup is successful
-        autoUpdater.checkForUpdatesAndNotify()
+        if (!forkBuild) autoUpdater.checkForUpdatesAndNotify()
     }
     catch (error) {
         logger.startup.error("Server launch failed", formatError(error))
