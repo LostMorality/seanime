@@ -184,6 +184,7 @@ func (h *Handler) HandleGetAnilistAnimeDetails(c echo.Context) error {
 //----------------------------------------------------------------------------------------------------------------------------------------------------
 
 var recommendationsCache = result.NewCache[int, []*anilist.BaseAnime]()
+var mangaRecommendationsCache = result.NewCache[int, []*anilist.BaseManga]()
 
 const animeRecommendationsQuery = `query AnimeRecommendations($id: Int) {
   Media(id: $id, type: ANIME) {
@@ -204,6 +205,61 @@ const animeRecommendationsQuery = `query AnimeRecommendations($id: Int) {
   }
 }`
 
+const mangaRecommendationsQuery = `query MangaRecommendations($id: Int) {
+  Media(id: $id, type: MANGA) {
+    recommendations(page: 1, perPage: 50, sort: RATING_DESC) {
+      nodes {
+        mediaRecommendation {
+          id idMal siteUrl status(version: 2) season type format bannerImage chapters volumes synonyms isAdult
+          countryOfOrigin meanScore description genres
+          title { userPreferred romaji english native }
+          coverImage { extraLarge large medium color }
+          startDate { year month day }
+          endDate { year month day }
+        }
+      }
+    }
+  }
+}`
+
+func fetchRecommendations[T any](h *Handler, query string, id int) ([]*T, error) {
+	// Runs a recommendations query and returns the recommended media, skipping empty nodes.
+	// (Not a doc comment, so codegen doesn't list this helper as a route.)
+	data, err := anilist.CustomQuery(map[string]interface{}{
+		"query":     query,
+		"variables": map[string]interface{}{"id": id},
+	}, h.App.Logger, "")
+	if err != nil {
+		return nil, err
+	}
+
+	b, err := json.Marshal(data)
+	if err != nil {
+		return nil, err
+	}
+
+	var res struct {
+		Media struct {
+			Recommendations struct {
+				Nodes []struct {
+					MediaRecommendation *T `json:"mediaRecommendation"`
+				} `json:"nodes"`
+			} `json:"recommendations"`
+		} `json:"Media"`
+	}
+	if err := json.Unmarshal(b, &res); err != nil {
+		return nil, err
+	}
+
+	recommendations := make([]*T, 0, len(res.Media.Recommendations.Nodes))
+	for _, node := range res.Media.Recommendations.Nodes {
+		if node.MediaRecommendation != nil {
+			recommendations = append(recommendations, node.MediaRecommendation)
+		}
+	}
+	return recommendations, nil
+}
+
 // HandleGetAnilistAnimeRecommendations
 //
 //	@summary returns up to 50 AniList recommendations for an anime.
@@ -222,39 +278,38 @@ func (h *Handler) HandleGetAnilistAnimeRecommendations(c echo.Context) error {
 		return h.RespondWithData(c, recommendations)
 	}
 
-	data, err := anilist.CustomQuery(map[string]interface{}{
-		"query":     animeRecommendationsQuery,
-		"variables": map[string]interface{}{"id": mId},
-	}, h.App.Logger, "")
+	recommendations, err := fetchRecommendations[anilist.BaseAnime](h, animeRecommendationsQuery, mId)
 	if err != nil {
 		return h.RespondWithError(c, err)
-	}
-
-	b, err := json.Marshal(data)
-	if err != nil {
-		return h.RespondWithError(c, err)
-	}
-
-	var res struct {
-		Media struct {
-			Recommendations struct {
-				Nodes []struct {
-					MediaRecommendation *anilist.BaseAnime `json:"mediaRecommendation"`
-				} `json:"nodes"`
-			} `json:"recommendations"`
-		} `json:"Media"`
-	}
-	if err := json.Unmarshal(b, &res); err != nil {
-		return h.RespondWithError(c, err)
-	}
-
-	recommendations := make([]*anilist.BaseAnime, 0, len(res.Media.Recommendations.Nodes))
-	for _, node := range res.Media.Recommendations.Nodes {
-		if node.MediaRecommendation != nil {
-			recommendations = append(recommendations, node.MediaRecommendation)
-		}
 	}
 	recommendationsCache.SetT(mId, recommendations, time.Hour)
+
+	return h.RespondWithData(c, recommendations)
+}
+
+// HandleGetAnilistMangaRecommendations
+//
+//	@summary returns up to 50 AniList recommendations for a manga.
+//	@desc The media details only include the top 8.
+//	@param id - int - true - "The AniList manga ID"
+//	@returns []anilist.BaseManga
+//	@route /api/v1/anilist/manga-recommendations/{id} [GET]
+func (h *Handler) HandleGetAnilistMangaRecommendations(c echo.Context) error {
+
+	mId, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		return h.RespondWithError(c, err)
+	}
+
+	if recommendations, ok := mangaRecommendationsCache.Get(mId); ok {
+		return h.RespondWithData(c, recommendations)
+	}
+
+	recommendations, err := fetchRecommendations[anilist.BaseManga](h, mangaRecommendationsQuery, mId)
+	if err != nil {
+		return h.RespondWithError(c, err)
+	}
+	mangaRecommendationsCache.SetT(mId, recommendations, time.Hour)
 
 	return h.RespondWithData(c, recommendations)
 }
