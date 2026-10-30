@@ -588,7 +588,8 @@ func (ac *AnilistClientImpl) customDoFunc(ctx context.Context, req *http.Request
 		}
 	}()
 
-	if err = sharedAniListPacer.Wait(req.Context(), sleepWithContext); err != nil {
+	var releaseSlot func()
+	if releaseSlot, err = sharedAniListPacer.Wait(req.Context(), sleepWithContext); err != nil {
 		return err
 	}
 
@@ -603,6 +604,8 @@ func (ac *AnilistClientImpl) customDoFunc(ctx context.Context, req *http.Request
 		},
 	)
 	if err != nil {
+		// No response to report, so the pacer stops counting this request
+		releaseSlot()
 		return err
 	}
 	sharedAniListPacer.Observe(resp.Header)
