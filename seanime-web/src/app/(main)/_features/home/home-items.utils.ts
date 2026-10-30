@@ -39,7 +39,7 @@ export function isAnimeLibraryItemsOnly(items: Nullish<Models_HomeItem[]>) {
 type HomeItemSchema = {
     name: string
     kind: ("row" | "header")[]
-    options?: { label: string, name: string, type: string, options?: any[], min?: number, max?: number }[]
+    options?: { label: string, name: string, type: string, options?: any[], min?: number, max?: number, default?: any }[]
     schemaVersion: number
     description?: string
 }
@@ -347,6 +347,7 @@ export const HOME_ITEMS = {
                 type: "number",
                 min: 5,
                 max: 50,
+                default: 20,
             },
             {
                 label: "Layout",
