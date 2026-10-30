@@ -195,6 +195,13 @@ export function MediaEntryCard<T extends "anime" | "manga">(props: MediaEntryCar
 
     const [shouldRenderPopup, setShouldRenderPopup] = useState(false)
     const closePopupTimerRef = React.useRef<number | undefined>(undefined)
+    // The add-to-list menu is portaled out of the card, so hovering it would hide or close the popup
+    const [addMenuOpen, setAddMenuOpen] = useState(false)
+    const addMenuOpenRef = React.useRef(false)
+    const handleAddMenuOpenChange = React.useCallback((open: boolean) => {
+        addMenuOpenRef.current = open
+        setAddMenuOpen(open)
+    }, [])
 
     const warmCardEntry = React.useCallback(() => {
         if (onClick || !shouldWarmEntryOnIntent(navigationPreloadMode, isSimulatedUser)) return
@@ -215,8 +222,9 @@ export function MediaEntryCard<T extends "anime" | "manga">(props: MediaEntryCar
             window.clearTimeout(closePopupTimerRef.current)
         }
         closePopupTimerRef.current = window.setTimeout(() => {
-            setShouldRenderPopup(false)
             closePopupTimerRef.current = undefined
+            if (addMenuOpenRef.current) return
+            setShouldRenderPopup(false)
         }, 35)
     }, [])
 
@@ -291,6 +299,7 @@ export function MediaEntryCard<T extends "anime" | "manga">(props: MediaEntryCar
                         onMouseLeave={onPopupMouseLeave}
                         coverImage={media.bannerImage || media.coverImage?.extraLarge || ""}
                         shouldRenderPopup={shouldRenderPopup}
+                        style={addMenuOpen ? { opacity: 1 } : undefined}
                     >
 
                         {/*METADATA SECTION*/}
@@ -391,7 +400,13 @@ export function MediaEntryCard<T extends "anime" | "manga">(props: MediaEntryCar
                             {(type === "anime" && !!libraryData) &&
                                 <ToggleLockFilesButton mediaId={media.id} allFilesLocked={libraryData.allFilesLocked} />}
 
-                            {!hideAnilistEntryEditButton && <AnilistMediaEntryModal listData={listData} media={media} type={type} forceModal />}
+                            {!hideAnilistEntryEditButton && <AnilistMediaEntryModal
+                                listData={listData}
+                                media={media}
+                                type={type}
+                                forceModal
+                                onAddMenuOpenChange={handleAddMenuOpenChange}
+                            />}
 
                             {withAudienceScore &&
                                 <MediaEntryAudienceScore
