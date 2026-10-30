@@ -60,6 +60,7 @@ const (
 	GetAnilistAnimeRecommendationsEndpoint             = "ANILIST-get-anilist-anime-recommendations"
 	GetAnilistCacheLayerStatusEndpoint                 = "ANILIST-get-anilist-cache-layer-status"
 	GetAnilistMangaCollectionEndpoint                  = "MANGA-get-anilist-manga-collection"
+	GetAnilistMangaRecommendationsEndpoint             = "ANILIST-get-anilist-manga-recommendations"
 	GetAnilistStudioDetailsEndpoint                    = "ANILIST-get-anilist-studio-details"
 	GetAnimeCollectionEndpoint                         = "ANILIST-get-anime-collection"
 	GetAnimeCollectionScheduleEndpoint                 = "ANIME-COLLECTION-get-anime-collection-schedule"
