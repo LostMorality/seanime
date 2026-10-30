@@ -142,7 +142,7 @@ export function startLocalServer(): number {
 <body><iframe id="yt" src="${url}" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>
 <script>
 var yt=document.getElementById("yt");
-window.__ytState=-1;
+window.__ytState=null;
 window.__ytTime=0;
 window.__ytDur=0;
 window.__yt=function(f,a){yt.contentWindow&&yt.contentWindow.postMessage(JSON.stringify({event:"command",func:f,args:a||[]}),"*")};
