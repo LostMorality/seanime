@@ -74,7 +74,7 @@ export function HomeSettingsModal({ emptyLibrary, isNakamaLibrary }: { emptyLibr
 
     const [currentItems, setCurrentItems] = React.useState<Models_HomeItem[]>(_homeItems || DEFAULT_HOME_ITEMS)
     const availableItems = HOME_ITEM_IDS.filter(type => {
-        if (type === "anime-carousel" || type === "manga-carousel" || type === "centered-title" || type === "my-lists") {
+        if (type === "anime-carousel" || type === "manga-carousel" || type === "centered-title" || type === "my-lists" || type === "recent-list-activity") {
             return true
         }
         return !currentItems.some(item => item.type === type)
@@ -430,6 +430,9 @@ function SortableHomeItem({ item, onRemove, onEditOptions, isUpdating, index }: 
                 <div className="font-medium text-white">{homeItemConfig.name}{!!item.options?.name && `: "${item.options.name}"`}
                     {(item.type === "centered-title" && item.options?.text) && `: "${item.options.text}"`}
                     {(item.type === "my-lists") && `: ${item.options?.type === "manga" ? "Manga" : "Anime"}`}
+                    {(item.type === "recent-list-activity") && `: ${item.options?.type === "manga" ? "Manga" : "Anime"}, ${
+                        homeItemConfig.options?.find(o => o.name === "show")?.options?.find(o => o.value === (item.options?.show || "planning-added"))?.label
+                    }`}
                 </div>
                 <p className="text-xs text-[--muted] line-clamp-1">
                     {homeItemConfig.description}
@@ -630,7 +633,7 @@ function OptionField({ option, value, onChange }: OptionFieldProps) {
                 <div className="space-y-2">
                     <label className="text-sm font-medium text-white">{label}</label>
                     <NumberInput
-                        value={value || min || 0}
+                        value={value || option.default || min || 0}
                         onValueChange={(valueAsNumber) => onChange(valueAsNumber)}
                         min={min}
                         max={max}
