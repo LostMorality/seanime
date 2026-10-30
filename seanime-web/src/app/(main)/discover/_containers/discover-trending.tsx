@@ -41,13 +41,16 @@ export function DiscoverTrending() {
         setAnimeRandomNumber(randomNumber)
     }, [randomNumber])
 
+    // How many anime the header can rotate through once the page filters are applied
+    const headerCountRef = React.useRef(12)
+
     const t = React.useRef<NodeJS.Timeout | null>(null)
     useEffect(() => {
         t.current = setInterval(() => {
             setHeaderIsTransitioning(true)
             setTimeout(() => {
                 setRandomNumber(p => {
-                    return p < 11 ? p + 1 : 0
+                    return p + 1 < Math.min(12, headerCountRef.current) ? p + 1 : 0
                 })
                 setHeaderIsTransitioning(false)
             }, 900)
@@ -72,25 +75,28 @@ export function DiscoverTrending() {
     const firedRef = React.useRef(false)
     React.useEffect(() => {
         if (!firedRef.current && data) {
-            const mediaItems = data?.Page?.media?.filter(Boolean)?.filter(n => n.status !== "NOT_YET_RELEASED") || []
+            const mediaItems = filterMedia(data?.Page?.media).filter(n => n.status !== "NOT_YET_RELEASED")
             setAnimeTotalItems(mediaItems.length)
-            const random = mediaItems[randomNumber]
+            headerCountRef.current = mediaItems.length
+            const random = mediaItems.length ? mediaItems[randomNumber % mediaItems.length] : undefined
             if (random) {
                 setRandomTrendingAtom(random)
                 firedRef.current = true
             }
         }
-    }, [data, randomNumber])
+    }, [data, randomNumber, filterMedia])
 
     React.useEffect(() => {
-        if (firedRef.current) {
-            const mediaItems = data?.Page?.media?.filter(Boolean)?.filter(n => n.status !== "NOT_YET_RELEASED") || []
-            const random = mediaItems[randomNumber]
+        if (firedRef.current && data) {
+            const mediaItems = filterMedia(data?.Page?.media).filter(n => n.status !== "NOT_YET_RELEASED")
+            setAnimeTotalItems(mediaItems.length)
+            headerCountRef.current = mediaItems.length
+            const random = mediaItems.length ? mediaItems[randomNumber % mediaItems.length] : undefined
             if (random) {
                 setRandomTrendingAtom(random)
             }
         }
-    }, [randomNumber, data])
+    }, [randomNumber, data, filterMedia])
 
     return (
         <Carousel
