@@ -53,21 +53,24 @@ function buildGenreProfile(collection: AL_AnimeCollection | undefined): GenrePro
  */
 export function useDiscoverRecommendedAnime(ref: React.RefObject<HTMLElement | null>) {
     const isInView = useInView(ref, { once: true })
-    const { data: animeCollection } = useGetAnimeCollection()
+    const { data: animeCollection, isError: collectionError } = useGetAnimeCollection()
     const { all: onListIds } = useDiscoverListIds()
 
     const profile = React.useMemo(() => buildGenreProfile(animeCollection), [animeCollection])
     const selectedGenres = useDiscoverGenres(__discover_recommendedGenresAtom)
+    const usingProfile = !selectedGenres
     const genres = selectedGenres ?? profile.topGenres
 
-    const { data, isLoading } = useAnilistListAnime({
+    // AniList's genre filter needs every genre to match, so a profile only asks for its top genre
+    // and the ranking below rewards shows that also have the others
+    const { data, isError } = useAnilistListAnime({
         page: 1,
         perPage: 50,
         // What people are watching now, so the pool isn't only all-time classics
         sort: ["TRENDING_DESC", "POPULARITY_DESC"],
         status: ["RELEASING", "FINISHED"],
         averageScore_greater: 70,
-        genres,
+        genres: usingProfile ? genres.slice(0, 1) : genres,
         isAdult: false,
     }, isInView && genres.length > 0)
 
@@ -88,8 +91,10 @@ export function useDiscoverRecommendedAnime(ref: React.RefObject<HTMLElement | n
 
     return {
         media,
-        isLoading: isLoading || !animeCollection || (!data && genres.length > 0),
+        isLoading: (!animeCollection && !collectionError) || (!data && !isError && genres.length > 0),
+        isError: collectionError || isError,
         topGenres: profile.topGenres,
         hasProfile: profile.topGenres.length > 0,
+        usingProfile,
     }
 }
