@@ -101,6 +101,20 @@ export type GetAnilistAnimeRecommendations_Variables = {
 /**
  * - Filepath: internal/handlers/anilist.go
  * - Filename: anilist.go
+ * - Endpoint: /api/v1/anilist/manga-recommendations/{id}
+ * @description
+ * Route returns up to 50 AniList recommendations for a manga.
+ */
+export type GetAnilistMangaRecommendations_Variables = {
+    /**
+     *  The AniList manga ID
+     */
+    id: number
+}
+
+/**
+ * - Filepath: internal/handlers/anilist.go
+ * - Filename: anilist.go
  * - Endpoint: /api/v1/anilist/studio-details/{id}
  * @description
  * Route returns details about a studio.
