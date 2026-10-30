@@ -10,6 +10,7 @@ import {
     AL_AnimeCollection,
     AL_AnimeDetailsById_Media,
     AL_BaseAnime,
+    AL_BaseManga,
     AL_ListAnime,
     AL_ListRecentAnime,
     AL_Stats,
@@ -111,6 +112,18 @@ export function useGetAnilistAnimeRecommendations(id: Nullish<number>, enabled: 
         method: API_ENDPOINTS.ANILIST.GetAnilistAnimeRecommendations.methods[0],
         queryKey: [API_ENDPOINTS.ANILIST.GetAnilistAnimeRecommendations.key, String(id)],
         enabled: !!id && enabled,
+        // Only tops up the list, so a failure just keeps the top 8
+        muteError: true,
+    })
+}
+
+export function useGetAnilistMangaRecommendations(id: Nullish<number>, enabled: boolean) {
+    return useServerQuery<Array<AL_BaseManga>>({
+        endpoint: API_ENDPOINTS.ANILIST.GetAnilistMangaRecommendations.endpoint.replace("{id}", String(id)),
+        method: API_ENDPOINTS.ANILIST.GetAnilistMangaRecommendations.methods[0],
+        queryKey: [API_ENDPOINTS.ANILIST.GetAnilistMangaRecommendations.key, String(id)],
+        enabled: !!id && enabled,
+        muteError: true,
     })
 }
 
