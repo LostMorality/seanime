@@ -38,14 +38,14 @@ Leave a star if you like the project! ⭐️
 
 ## What's different in this fork
 
-This is my fork of [Seanime](https://github.com/5rahim/seanime). It isn't an official build. The changes live on the [`discover-improvements`](https://github.com/LostMorality/seanime/tree/discover-improvements) branch ([compare with upstream](https://github.com/5rahim/seanime/compare/main...LostMorality:seanime:discover-improvements)), and you can try them by building that branch (see [Development and Build](#development-and-build)).
+This is my fork of [Seanime](https://github.com/5rahim/seanime). It isn't an official build. The changes live on the [`discover-improvements`](https://github.com/LostMorality/seanime/tree/discover-improvements) branch ([compare with upstream](https://github.com/5rahim/seanime/compare/main...LostMorality:seanime:discover-improvements)), and you can try them by building that branch (see [Build it yourself](#build-it-yourself) below).
 
 | Area | Change |
 |---|---|
 | Discover | **Hide watched** and **Also hide Planning** switches (on by default), a genre filter on every row, and a **Recommended for You** row based on the genres you watch and how you score them, leaning towards shows people are watching now instead of only old classics |
 | Anime pages | Recommendations skip anime you've already seen and fetch more from AniList when most of the top 8 are hidden |
 | Anime pages | A Steam-style gallery in the banner: every trailer and PV for the show (from MyAnimeList, not just AniList's one), then its artwork, then it settles on the banner image. Videos are muted with sound while your mouse is over the header, and everything fades in and out. Hover the header for **◀ ▶** to skip, **Sound on** (stays on), **Play again**, and **Trailers**, which opens a window with every trailer listed, picking up where the banner was, plus **Fullscreen**. It pauses when you scroll away or switch apps. Settings can make it the main trailer only, put it below the episodes, make it click-to-play, or turn it off |
-| Manga pages | Recommendations skip manga you're reading or have read (same Hide watched / Planning switches) |
+| Manga pages | Recommendations skip manga you're reading or have read (same Hide watched / Planning switches) and fetch more from AniList when most of them are hidden |
 | Anime cards | A **新エピソード / NEW EPISODE** sash across the cover of airing shows you're watching when an episode you haven't seen is out |
 | Anime cards | Right-click the **+** (Add to list) button to add as Watching, Planning, Completed, Paused or Dropped. A normal click still adds as Planning |
 | My Lists | **Date added (oldest first)** sort |
@@ -56,6 +56,22 @@ This is my fork of [Seanime](https://github.com/5rahim/seanime). It isn't an off
 | Plugins | Characters info+ only looks a character up when you hover it, instead of every character on page load, which cuts down on AniList rate limiting. **Merged** in [PR #39](https://github.com/Seanime-contributions/Seanime-Providers/pull/39) |
 
 The new options are in **Settings › UI** (NEW EPISODE sash, trailer mode), on the Discover page itself, and in **Home › settings** for the new row.
+
+### Build it yourself
+
+One script builds the whole thing. You need [Git](https://git-scm.com/downloads), [Go](https://go.dev/dl/) and [Node.js 20+](https://nodejs.org/).
+
+Windows (PowerShell), which gives you the Seanime Denshi installer:
+
+```powershell
+git clone -b discover-improvements https://github.com/LostMorality/seanime.git
+cd seanime
+powershell -ExecutionPolicy Bypass -File .\build-fork.ps1
+```
+
+macOS (Apple Silicon) and Linux: the same clone, then `./build-fork.sh`. Add `-ServerOnly` / `--server-only` to build just the server and use Seanime in your browser.
+
+Full steps and fixes for common problems: [BUILDING-THIS-FORK.md](https://github.com/LostMorality/seanime/blob/discover-improvements/BUILDING-THIS-FORK.md). Builds made this way don't auto-update to the official release, since that would remove the fork's changes; update by running `git pull` and the script again.
 
 Sent upstream: [#994](https://github.com/5rahim/seanime/issues/994) (Video Enhancement), [#996](https://github.com/5rahim/seanime/issues/996) (Discover), [#964](https://github.com/5rahim/seanime/pull/964) (volume boost, merged), [Seanime-Providers #39](https://github.com/Seanime-contributions/Seanime-Providers/pull/39) (Characters info+, merged).
 
