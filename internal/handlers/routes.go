@@ -207,6 +207,7 @@ func InitRoutes(app *core.App, e *echo.Echo) {
 
 	v1Anilist.GET("/media-details/:id", h.HandleGetAnilistAnimeDetails)
 	v1Anilist.GET("/media-recommendations/:id", h.HandleGetAnilistAnimeRecommendations)
+	v1Anilist.GET("/manga-recommendations/:id", h.HandleGetAnilistMangaRecommendations)
 
 	v1Anilist.GET("/studio-details/:id", h.HandleGetAnilistStudioDetails)
 
