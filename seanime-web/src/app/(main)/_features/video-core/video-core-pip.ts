@@ -285,8 +285,14 @@ export class VideoCorePipManager extends EventTarget {
     // Only the video gets the filter, subtitles are drawn on top unfiltered
     private drawVideoFrame(context: CanvasRenderingContext2D) {
         if (!this.video) return
+        // Follow the source size, it changes on HLS quality switches
+        const { videoWidth, videoHeight } = this.video
+        if (videoWidth && videoHeight && (context.canvas.width !== videoWidth || context.canvas.height !== videoHeight)) {
+            context.canvas.width = videoWidth
+            context.canvas.height = videoHeight
+        }
         context.filter = this.videoFilter
-        context.drawImage(this.video, 0, 0)
+        context.drawImage(this.video, 0, 0, context.canvas.width, context.canvas.height)
         context.filter = "none"
     }
 
