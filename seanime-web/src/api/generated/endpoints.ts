@@ -74,6 +74,16 @@ export const API_ENDPOINTS = {
         },
         /**
          *  @description
+         *  Route returns up to 50 AniList recommendations for a manga.
+         *  The media details only include the top 8.
+         */
+        GetAnilistMangaRecommendations: {
+            key: "ANILIST-get-anilist-manga-recommendations",
+            methods: ["GET"],
+            endpoint: "/api/v1/anilist/manga-recommendations/{id}",
+        },
+        /**
+         *  @description
          *  Route returns details about a studio.
          *  This fetches media produced by the studio.
          */
