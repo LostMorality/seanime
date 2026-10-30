@@ -277,6 +277,15 @@ func (f *Fetch) isURLAllowed(urlStr string) bool {
 	return false
 }
 
+// isAniListURL reports whether a request goes to the AniList API, comparing the exact host.
+func isAniListURL(raw string) bool {
+	u, err := url.Parse(raw)
+	if err != nil || (u.Scheme != "https" && u.Scheme != "http") {
+		return false
+	}
+	return strings.EqualFold(u.Hostname(), "graphql.anilist.co")
+}
+
 func (f *Fetch) Fetch(call goja.FunctionCall) goja.Value {
 	defer func() {
 		if r := recover(); r != nil {
@@ -481,15 +490,30 @@ func (f *Fetch) Fetch(call goja.FunctionCall) goja.Value {
 
 		// Plugin requests to AniList share the server's rate-limit block and pacing,
 		// so a plugin can't burn through the budget and get everything else blocked
-		isAniList := false
-		if lower := strings.ToLower(url); strings.HasPrefix(lower, "https://graphql.anilist.co") || strings.HasPrefix(lower, "http://graphql.anilist.co") {
-			isAniList = true
-			if werr := anilist.WaitForAniListSlot(request.Context()); werr != nil {
+		isAniList := isAniListURL(url)
+		releaseSlot := func() {}
+		if isAniList {
+			// The wait counts toward the fetch timeout
+			waitCtx := request.Context()
+			if options.Timeout > 0 {
+				var cancel context.CancelFunc
+				waitCtx, cancel = context.WithTimeout(waitCtx, time.Duration(options.Timeout)*time.Second)
+				defer cancel()
+			}
+			var werr error
+			if releaseSlot, werr = anilist.WaitForAniListSlot(waitCtx); werr != nil {
 				f.vmResponseCh <- func() {
 					_ = reject(NewError(f.vm, werr))
 				}
 				return
 			}
+			// The plugin may have been unloaded while waiting
+			if f.closed.Load() {
+				releaseSlot()
+				return
+			}
+			// The request gets whatever is left of the timeout after the wait
+			request.SetContext(waitCtx)
 		}
 
 		switch options.Method {
@@ -512,6 +536,7 @@ func (f *Fetch) Fetch(call goja.FunctionCall) goja.Value {
 		}
 
 		if err != nil {
+			releaseSlot()
 			f.vmResponseCh <- func() {
 				_ = reject(NewError(f.vm, err))
 			}
