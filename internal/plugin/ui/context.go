@@ -118,6 +118,7 @@ type EventListener struct {
 	queue    []*ClientPluginEvent     // Queue for event payloads
 	callback func(*ClientPluginEvent) // Callback function to process events
 	closed   bool
+	timeout  *time.Timer // Gives up on the request this listener waits for, stopped on close
 	mu       sync.Mutex
 }
 
@@ -367,6 +368,32 @@ func (e *EventListener) Close() {
 	}
 	e.closed = true
 	e.queue = nil // Clear the queue
+	if e.timeout != nil {
+		e.timeout.Stop()
+	}
+}
+
+// setTimeout attaches the request timeout so closing the listener stops it
+func (e *EventListener) setTimeout(t *time.Timer) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	if e.closed {
+		t.Stop()
+		return
+	}
+	e.timeout = t
+}
+
+// closeIfOpen closes the listener and reports whether this call was the one that closed it
+func (e *EventListener) closeIfOpen() bool {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	if e.closed {
+		return false
+	}
+	e.closed = true
+	e.queue = nil
+	return true
 }
 
 func (e *EventListener) Send(event *ClientPluginEvent) {
