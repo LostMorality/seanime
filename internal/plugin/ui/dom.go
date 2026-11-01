@@ -129,6 +129,25 @@ func (d *DOMManager) jsOnMainTabReady(call goja.FunctionCall) goja.Value {
 	return d.ctx.vm.ToValue(nil)
 }
 
+// clientRequestTimeout is how long a request waits for the client to answer.
+// The client drops requests while it isn't the main tab or is reloading, so an answer may never come.
+var clientRequestTimeout = 10 * time.Second
+
+// giveUpAfter settles a request with fallback if the client hasn't answered within clientRequestTimeout,
+// so a plugin awaiting it isn't stuck forever. fallback runs on the VM. Closing the listener stops the timer.
+func (d *DOMManager) giveUpAfter(listener *EventListener, fallback func()) {
+	listener.setTimeout(time.AfterFunc(clientRequestTimeout, func() {
+		if !listener.closeIfOpen() {
+			return
+		}
+		d.ctx.UnregisterEventListener(listener.ID)
+		d.ctx.scheduler.ScheduleAsync(func() error {
+			fallback()
+			return nil
+		})
+	}))
+}
+
 // jsQuery handles querying for multiple DOM elements
 func (d *DOMManager) jsQuery(call goja.FunctionCall) goja.Value {
 	selector := call.Argument(0).String()
@@ -142,6 +161,7 @@ func (d *DOMManager) jsQuery(call goja.FunctionCall) goja.Value {
 
 	// Set up a one-time event listener for the response
 	listener := d.ctx.RegisterEventListener(ClientDOMQueryResultEvent)
+	d.giveUpAfter(listener, func() { resolve(d.ctx.vm.ToValue([]interface{}{})) })
 
 	listener.SetCallback(func(event *ClientPluginEvent) {
 		var payload ClientDOMQueryResultEventPayload
@@ -185,6 +205,7 @@ func (d *DOMManager) jsQueryOne(call goja.FunctionCall) goja.Value {
 
 	// Set up a one-time event listener for the response
 	listener := d.ctx.RegisterEventListener(ClientDOMQueryOneResultEvent)
+	d.giveUpAfter(listener, func() { resolve(d.ctx.vm.ToValue(goja.Null())) })
 
 	listener.SetCallback(func(event *ClientPluginEvent) {
 		var payload ClientDOMQueryOneResultEventPayload
@@ -518,6 +539,7 @@ func (d *DOMManager) jsCreateElement(call goja.FunctionCall) goja.Value {
 
 	// Set up a one-time event listener for the response
 	listener := d.ctx.RegisterEventListener(ClientDOMCreateResultEvent)
+	d.giveUpAfter(listener, func() { resolve(d.ctx.vm.ToValue(goja.Null())) })
 
 	listener.SetCallback(func(event *ClientPluginEvent) {
 		var payload ClientDOMCreateResultEventPayload
@@ -866,6 +888,7 @@ func (d *DOMManager) getElementText(elementId string) goja.Value {
 
 	// Listen for changes from the client
 	listener := d.ctx.RegisterEventListener(ClientDOMElementUpdatedEvent)
+	d.giveUpAfter(listener, func() { resolve(d.ctx.vm.ToValue("")) })
 
 	listener.SetCallback(func(event *ClientPluginEvent) {
 		var payload ClientDOMElementUpdatedEventPayload
@@ -917,6 +940,7 @@ func (d *DOMManager) getElementAttribute(elementId, name string) goja.Value {
 
 	// Listen for changes from the client
 	listener := d.ctx.RegisterEventListener(ClientDOMElementUpdatedEvent)
+	d.giveUpAfter(listener, func() { resolve(d.ctx.vm.ToValue(goja.Null())) })
 
 	listener.SetCallback(func(event *ClientPluginEvent) {
 		var payload ClientDOMElementUpdatedEventPayload
@@ -993,6 +1017,7 @@ func (d *DOMManager) hasElementClass(elementId, className string) goja.Value {
 
 	// Listen for changes from the client
 	listener := d.ctx.RegisterEventListener(ClientDOMElementUpdatedEvent)
+	d.giveUpAfter(listener, func() { resolve(d.ctx.vm.ToValue(false)) })
 
 	listener.SetCallback(func(event *ClientPluginEvent) {
 		var payload ClientDOMElementUpdatedEventPayload
@@ -1056,6 +1081,7 @@ func (d *DOMManager) getElementStyle(elementId, property string) goja.Value {
 
 	// Listen for changes from the client
 	listener := d.ctx.RegisterEventListener(ClientDOMElementUpdatedEvent)
+	d.giveUpAfter(listener, func() { resolve(d.ctx.vm.ToValue("")) })
 
 	listener.SetCallback(func(event *ClientPluginEvent) {
 		var payload ClientDOMElementUpdatedEventPayload
@@ -1097,6 +1123,7 @@ func (d *DOMManager) getElementComputedStyle(elementId, property string) goja.Va
 
 	// Listen for changes from the client
 	listener := d.ctx.RegisterEventListener(ClientDOMElementUpdatedEvent)
+	d.giveUpAfter(listener, func() { resolve(d.ctx.vm.ToValue("")) })
 
 	listener.SetCallback(func(event *ClientPluginEvent) {
 		var payload ClientDOMElementUpdatedEventPayload
@@ -1196,6 +1223,7 @@ func (d *DOMManager) getElementParent(elementId string, opts QueryElementOptions
 
 	// Listen for changes from the client
 	listener := d.ctx.RegisterEventListener(ClientDOMElementUpdatedEvent)
+	d.giveUpAfter(listener, func() { resolve(d.ctx.vm.ToValue(goja.Null())) })
 
 	listener.SetCallback(func(event *ClientPluginEvent) {
 		var payload ClientDOMElementUpdatedEventPayload
@@ -1242,6 +1270,7 @@ func (d *DOMManager) getElementChildren(elementId string, opts QueryElementOptio
 
 	// Listen for changes from the client
 	listener := d.ctx.RegisterEventListener(ClientDOMElementUpdatedEvent)
+	d.giveUpAfter(listener, func() { resolve(d.ctx.vm.ToValue([]interface{}{})) })
 
 	listener.SetCallback(func(event *ClientPluginEvent) {
 		var payload ClientDOMElementUpdatedEventPayload
@@ -1335,6 +1364,7 @@ func (d *DOMManager) getElementAttributes(elementId string) goja.Value {
 
 	// Listen for changes from the client
 	listener := d.ctx.RegisterEventListener(ClientDOMElementUpdatedEvent)
+	d.giveUpAfter(listener, func() { resolve(d.ctx.vm.ToValue(goja.Null())) })
 
 	listener.SetCallback(func(event *ClientPluginEvent) {
 		var payload ClientDOMElementUpdatedEventPayload
@@ -1367,6 +1397,7 @@ func (d *DOMManager) hasElementAttribute(elementId, name string) goja.Value {
 
 	// Listen for changes from the client
 	listener := d.ctx.RegisterEventListener(ClientDOMElementUpdatedEvent)
+	d.giveUpAfter(listener, func() { resolve(d.ctx.vm.ToValue(false)) })
 
 	listener.SetCallback(func(event *ClientPluginEvent) {
 		var payload ClientDOMElementUpdatedEventPayload
@@ -1408,6 +1439,7 @@ func (d *DOMManager) getElementProperty(elementId, name string) goja.Value {
 
 	// Listen for changes from the client
 	listener := d.ctx.RegisterEventListener(ClientDOMElementUpdatedEvent)
+	d.giveUpAfter(listener, func() { resolve(d.ctx.vm.ToValue(goja.Null())) })
 
 	listener.SetCallback(func(event *ClientPluginEvent) {
 		var payload ClientDOMElementUpdatedEventPayload
@@ -1453,11 +1485,12 @@ func (d *DOMManager) getElementStyles(elementId string) goja.Value {
 
 	// Listen for changes from the client
 	listener := d.ctx.RegisterEventListener(ClientDOMElementUpdatedEvent)
+	d.giveUpAfter(listener, func() { resolve(d.ctx.vm.ToValue(goja.Null())) })
 
 	listener.SetCallback(func(event *ClientPluginEvent) {
 		var payload ClientDOMElementUpdatedEventPayload
 		if event.ParsePayloadAs(ClientDOMElementUpdatedEvent, &payload) {
-			if payload.Action == "getStyle" && payload.ElementId == elementId && payload.RequestID == requestId && payload.Result != nil {
+			if payload.Action == "getStyle" && payload.ElementId == elementId && payload.RequestID == requestId {
 				d.ctx.scheduler.ScheduleAsync(func() error {
 					resolve(d.ctx.vm.ToValue(payload.Result))
 					return nil
@@ -1485,6 +1518,7 @@ func (d *DOMManager) hasElementStyle(elementId, property string) goja.Value {
 
 	// Listen for changes from the client
 	listener := d.ctx.RegisterEventListener(ClientDOMElementUpdatedEvent)
+	d.giveUpAfter(listener, func() { resolve(d.ctx.vm.ToValue(false)) })
 
 	listener.SetCallback(func(event *ClientPluginEvent) {
 		var payload ClientDOMElementUpdatedEventPayload
@@ -1526,6 +1560,7 @@ func (d *DOMManager) getElementDataAttribute(elementId, key string) goja.Value {
 
 	// Listen for changes from the client
 	listener := d.ctx.RegisterEventListener(ClientDOMElementUpdatedEvent)
+	d.giveUpAfter(listener, func() { resolve(d.ctx.vm.ToValue(goja.Null())) })
 
 	listener.SetCallback(func(event *ClientPluginEvent) {
 		var payload ClientDOMElementUpdatedEventPayload
@@ -1560,6 +1595,7 @@ func (d *DOMManager) getElementDataAttributes(elementId string) goja.Value {
 
 	// Listen for changes from the client
 	listener := d.ctx.RegisterEventListener(ClientDOMElementUpdatedEvent)
+	d.giveUpAfter(listener, func() { resolve(d.ctx.vm.ToValue(goja.Null())) })
 
 	listener.SetCallback(func(event *ClientPluginEvent) {
 		var payload ClientDOMElementUpdatedEventPayload
@@ -1613,6 +1649,7 @@ func (d *DOMManager) hasElementDataAttribute(elementId, key string) goja.Value {
 
 	// Listen for changes from the client
 	listener := d.ctx.RegisterEventListener(ClientDOMElementUpdatedEvent)
+	d.giveUpAfter(listener, func() { resolve(d.ctx.vm.ToValue(false)) })
 
 	listener.SetCallback(func(event *ClientPluginEvent) {
 		var payload ClientDOMElementUpdatedEventPayload
@@ -1664,9 +1701,18 @@ func (d *DOMManager) elementQuery(elementId, selector string, opts QueryElementO
 	requestId := uuid.New().String()
 
 	// Set up a one-time event listener for the response
-	listener := d.ctx.RegisterEventListener(ClientDOMQueryResultEvent)
+	listener := d.ctx.RegisterEventListener(ClientDOMQueryResultEvent, ClientDOMElementUpdatedEvent)
+	d.giveUpAfter(listener, func() { resolve(d.ctx.vm.ToValue([]interface{}{})) })
 
 	listener.SetCallback(func(event *ClientPluginEvent) {
+		if isMissingElementReply(event, "query", elementId, requestId) {
+			d.ctx.scheduler.ScheduleAsync(func() error {
+				resolve(d.ctx.vm.ToValue([]interface{}{}))
+				return nil
+			})
+			d.ctx.UnregisterEventListener(listener.ID)
+			return
+		}
 		var payload ClientDOMQueryResultEventPayload
 		if event.ParsePayloadAs(ClientDOMQueryResultEvent, &payload) && payload.RequestID == requestId {
 			d.ctx.scheduler.ScheduleAsync(func() error {
@@ -1693,9 +1739,17 @@ func (d *DOMManager) elementQuery(elementId, selector string, opts QueryElementO
 			"withInnerHTML": opts.WithInnerHTML,
 			"withOuterHTML": opts.WithOuterHTML,
 		},
+		RequestID: requestId,
 	})
 
 	return d.ctx.vm.ToValue(promise)
+}
+
+// isMissingElementReply reports whether the client answered that the element of this request no longer exists
+func isMissingElementReply(event *ClientPluginEvent, action, elementId, requestId string) bool {
+	var payload ClientDOMElementUpdatedEventPayload
+	return event.ParsePayloadAs(ClientDOMElementUpdatedEvent, &payload) &&
+		payload.Action == action && payload.ElementId == elementId && payload.RequestID == requestId
 }
 
 // elementQueryOne handles querying for a single DOM element from a parent element
@@ -1706,9 +1760,18 @@ func (d *DOMManager) elementQueryOne(elementId, selector string, opts QueryEleme
 	requestId := uuid.New().String()
 
 	// Set up a one-time event listener for the response
-	listener := d.ctx.RegisterEventListener(ClientDOMQueryOneResultEvent)
+	listener := d.ctx.RegisterEventListener(ClientDOMQueryOneResultEvent, ClientDOMElementUpdatedEvent)
+	d.giveUpAfter(listener, func() { resolve(d.ctx.vm.ToValue(goja.Null())) })
 
 	listener.SetCallback(func(event *ClientPluginEvent) {
+		if isMissingElementReply(event, "queryOne", elementId, requestId) {
+			d.ctx.scheduler.ScheduleAsync(func() error {
+				resolve(d.ctx.vm.ToValue(goja.Null()))
+				return nil
+			})
+			d.ctx.UnregisterEventListener(listener.ID)
+			return
+		}
 		var payload ClientDOMQueryOneResultEventPayload
 		if event.ParsePayloadAs(ClientDOMQueryOneResultEvent, &payload) && payload.RequestID == requestId {
 			d.ctx.scheduler.ScheduleAsync(func() error {
@@ -1737,6 +1800,7 @@ func (d *DOMManager) elementQueryOne(elementId, selector string, opts QueryEleme
 			"withInnerHTML": opts.WithInnerHTML,
 			"withOuterHTML": opts.WithOuterHTML,
 		},
+		RequestID: requestId,
 	})
 
 	return d.ctx.vm.ToValue(promise)
