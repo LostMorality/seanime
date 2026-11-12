@@ -78,6 +78,8 @@ import { vc_overlayFeedbackTimeout } from "@/app/(main)/_features/video-core/vid
 import { vc_showOverlayFeedback } from "@/app/(main)/_features/video-core/video-core-overlay-display"
 import { VideoCoreOverlayDisplay } from "@/app/(main)/_features/video-core/video-core-overlay-display"
 import { vc_pip } from "@/app/(main)/_features/video-core/video-core-pip"
+import { rememberSubtitlePick } from "@/app/(main)/_features/video-core/video-core-subtitle-pick"
+import { useIsHdrDisplay, VC_HDR_GAMMA_FILTER, VideoCoreHdrGammaFilter } from "@/app/(main)/_features/video-core/video-core-hdr-gamma"
 import { vc_pipElement, vc_pipManager, VideoCorePipManager } from "@/app/(main)/_features/video-core/video-core-pip"
 import {
     useVideoCorePlaylist,
@@ -345,6 +347,12 @@ const PlayerContent = React.memo<PlayerContentProps>(({
     onSubtitlePreferenceChange,
 }) => {
     const isMobile = useAtomValue(vc_isMobile)
+    // Remember the track picked in the menu for this show, so later episodes start on the same kind of track
+    const mediaId = state.playbackInfo?.media?.id
+    const handleSubtitlePick = React.useCallback((selection: VideoCoreSubtitleSelection) => {
+        rememberSubtitlePick(mediaId, selection)
+        onSubtitlePreferenceChange?.(selection)
+    }, [mediaId, onSubtitlePreferenceChange])
     const isMiniPlayer = useAtomValue(vc_miniPlayer)
     const busy = useAtomValue(vc_busy)
     const paused = useAtomValue(vc_paused)
@@ -358,9 +366,14 @@ const PlayerContent = React.memo<PlayerContentProps>(({
     const action = useSetAtom(vc_dispatchAction)
     const [autoPlay] = useAtom(vc_autoPlayVideoAtom)
 
-    const videoFilter = (settings.videoEnhancement.enabled && beautifyImage)
-        ? `contrast(${settings.videoEnhancement.contrast}) saturate(${settings.videoEnhancement.saturation}) brightness(${settings.videoEnhancement.brightness})`
-        : "none"
+    const isHdrDisplay = useIsHdrDisplay()
+    const videoFilter = [
+        (settings.videoEnhancement.enabled && beautifyImage)
+            ? `contrast(${settings.videoEnhancement.contrast}) saturate(${settings.videoEnhancement.saturation}) brightness(${settings.videoEnhancement.brightness})`
+            : "",
+        // Last, so it corrects the final image for the display
+        (settings.videoEnhancement.hdrGammaFix && isHdrDisplay) ? VC_HDR_GAMMA_FILTER : "",
+    ].filter(Boolean).join(" ") || "none"
 
     // The PiP window shows raw frames, so the canvas path has to apply the filter itself
     React.useEffect(() => {
@@ -446,6 +459,7 @@ const PlayerContent = React.memo<PlayerContentProps>(({
                             onClick={handleClick}
                             onContextMenu={handleClick}
                         >
+                            <VideoCoreHdrGammaFilter />
                             <video
                                 data-vc-element="video"
                                 data-video-core-element
@@ -515,7 +529,10 @@ const PlayerContent = React.memo<PlayerContentProps>(({
                         {isPip && (
                             <div
                                 data-vc-element="pip-overlay"
-                                className="absolute top-0 left-0 w-full h-full z-[100] bg-black flex items-center justify-center"
+                                className="absolute top-0 left-0 w-full h-full z-[100] flex items-center justify-center"
+                                // Not fully opaque on purpose: Chromium stops presenting frames of a video hidden behind an
+                                // opaque layer, which starves the canvas PiP (it draws on the main video's frame callbacks)
+                                style={{ backgroundColor: "rgba(0, 0, 0, 0.99)" }}
                             >
                                 <Button
                                     intent="gray-outline"
@@ -554,7 +571,7 @@ const PlayerContent = React.memo<PlayerContentProps>(({
                                 onVideoSourceChange={onVideoSourceChange}
                                 onHlsQualityChange={onHlsQualityChange}
                             />
-                            <VideoCoreSubtitleMenu inline={inline} onPreferenceChange={onSubtitlePreferenceChange} />
+                            <VideoCoreSubtitleMenu inline={inline} onPreferenceChange={handleSubtitlePick} />
                             <VideoCoreAudioMenu />
                             <VideoCoreCastButton />
                             <VideoCorePipButton />
@@ -571,7 +588,7 @@ const PlayerContent = React.memo<PlayerContentProps>(({
                                     onVideoSourceChange={onVideoSourceChange}
                                     onHlsQualityChange={onHlsQualityChange}
                                 />
-                                <VideoCoreSubtitleMenu inline={inline} onPreferenceChange={onSubtitlePreferenceChange} />
+                                <VideoCoreSubtitleMenu inline={inline} onPreferenceChange={handleSubtitlePick} />
                                 <VideoCoreAudioMenu />
                                 <VideoCoreCastButton />
                                 <VideoCorePipButton />
@@ -841,24 +858,6 @@ export function VideoCore(props: VideoCoreProps) {
             }
         }
     }, [state.active, inline])
-
-    React.useEffect(() => {
-        if (!__isElectronDesktop__ || !window.electron?.on) return
-
-        const pausePlayback = () => {
-            if (videoRef.current && !videoRef.current.paused && !videoRef.current.ended) {
-                videoRef.current.pause()
-            }
-        }
-
-        const removeMinimizedListener = window.electron.on("window:minimized", pausePlayback)
-        const removeHiddenListener = window.electron.on("window:hidden", pausePlayback)
-
-        return () => {
-            removeMinimizedListener?.()
-            removeHiddenListener?.()
-        }
-    }, [])
 
     // Track if this player should dispatch terminated event on unmount
     React.useEffect(() => {
@@ -1138,6 +1137,7 @@ export function VideoCore(props: VideoCoreProps) {
                 return new MediaCaptionsManager({
                     videoElement: v!,
                     tracks: nonLibassSubtitleTracks,
+                    mediaId: state.playbackInfo?.media?.id,
                     translateTargetLang: serverStatus?.settings?.mediaPlayer?.vcTranslate
                         ? serverStatus?.settings?.mediaPlayer?.vcTranslateTargetLanguage
                         : null,
