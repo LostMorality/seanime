@@ -181,6 +181,8 @@ export const vc_showChapterMarkersAtom = atom(
     }
 )
 export const vc_highlightOPEDChaptersAtom = atomWithStorage("sea-video-core-highlight-op-ed-chapters", true, undefined, { getOnInit: true })
+// Desktop app only, pausing is skipped while picture-in-picture is open
+export const vc_pauseOnMinimizeAtom = atomWithStorage("sea-video-core-pause-on-minimize", true, undefined, { getOnInit: true })
 export const vc_beautifyImageAtom = atomWithStorage("sea-video-core-increase-saturation", false, undefined, { getOnInit: true })
 export const vc_autoNextAtom = atom(
     (get) => get(mediaCorePreferencesAtom).autoNext,
