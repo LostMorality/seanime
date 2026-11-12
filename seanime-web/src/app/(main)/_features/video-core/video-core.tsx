@@ -102,6 +102,7 @@ import {
     vc_autoPlayVideoAtom,
     vc_autoSkipOPEDAtom,
     vc_beautifyImageAtom,
+    vc_pauseOnMinimizeAtom,
     vc_settings,
     vc_showStatsForNerdsAtom,
     vc_storedMutedAtom,
@@ -858,6 +859,27 @@ export function VideoCore(props: VideoCoreProps) {
             }
         }
     }, [state.active, inline])
+
+    const pauseOnMinimize = useAtomValue(vc_pauseOnMinimizeAtom)
+    React.useEffect(() => {
+        if (!pauseOnMinimize || !__isElectronDesktop__ || !window.electron?.on) return
+
+        const pausePlayback = () => {
+            // Keep playing when the user is still watching in picture-in-picture
+            if (document.pictureInPictureElement) return
+            if (videoRef.current && !videoRef.current.paused && !videoRef.current.ended) {
+                videoRef.current.pause()
+            }
+        }
+
+        const removeMinimizedListener = window.electron.on("window:minimized", pausePlayback)
+        const removeHiddenListener = window.electron.on("window:hidden", pausePlayback)
+
+        return () => {
+            removeMinimizedListener?.()
+            removeHiddenListener?.()
+        }
+    }, [pauseOnMinimize])
 
     // Track if this player should dispatch terminated event on unmount
     React.useEffect(() => {
