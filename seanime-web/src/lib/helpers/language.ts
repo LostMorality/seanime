@@ -18,7 +18,7 @@ const LANG_MAP: Record<string, string> = {
     nl: "nl", dut: "nl", nld: "nl", dutch: "nl",
     pl: "pl", pol: "pl", polish: "pl",
     uk: "uk", ukr: "uk", ukrainian: "uk",
-    ja: "ja", jpn: "ja", japanese: "ja",
+    ja: "ja", jpn: "ja", japanese: "ja", jp: "ja", jap: "ja",
     zh: "zh", chi: "zh", zho: "zh", chinese: "zh",
     ko: "ko", kor: "ko", korean: "ko",
     ar: "ar", ara: "ar", arabic: "ar",
@@ -123,4 +123,63 @@ export function isTrackLanguageMatch(source: LanguageMatchSource, preference: st
         ...tokenizeLanguageValue(source.label),
         ...tokenizeLanguageValue(source.title),
     ].some(token => token === pref || detectTrackLanguage({ language: token }) === normalizedPref)
+}
+
+const LANGUAGE_NAMES: Record<string, string> = {
+    en: "English", ru: "Russian", fr: "French", de: "German", es: "Spanish", it: "Italian", pt: "Portuguese",
+    nl: "Dutch", pl: "Polish", uk: "Ukrainian", ja: "Japanese", zh: "Chinese", ko: "Korean", ar: "Arabic",
+    hi: "Hindi", tr: "Turkish", vi: "Vietnamese", sv: "Swedish", da: "Danish", fi: "Finnish", no: "Norwegian",
+    el: "Greek", he: "Hebrew", id: "Indonesian", th: "Thai",
+}
+
+export type LanguageSuggestion = { code: string, name: string, aliases: string[] }
+
+// "English", "eng", "español" -> "en"/"es". Unlisted 2-letter codes are kept as they are, like detectTrackLanguage does.
+export function getLanguageCode(word: string): string | null {
+    const w = word.trim().toLowerCase()
+    if (LANG_MAP[w]) return LANG_MAP[w]
+    if (/^[a-z]{2}$/.test(w)) return w
+    return null
+}
+
+// Every spelling the matcher understands for a language, e.g. "en" -> ["en", "eng", "english"]
+export function getLanguageAliases(code: string): string[] {
+    const aliases = Object.keys(LANG_MAP).filter(k => LANG_MAP[k] === code && /^[a-z]+$/.test(k))
+    return aliases.length ? aliases.sort((a, b) => a.length - b.length) : [code]
+}
+
+function toSuggestion(code: string): LanguageSuggestion {
+    return { code, name: LANGUAGE_NAMES[code] ?? code.toUpperCase(), aliases: getLanguageAliases(code) }
+}
+
+// Turns a typed word ("english", "eng", "japan", "spa") into the languages it most likely means
+export function suggestLanguages(text: string, limit = 3): LanguageSuggestion[] {
+    const q = text.trim().toLowerCase()
+    if (!q) return []
+    const exact = LANG_MAP[q]
+    if (exact) return [toSuggestion(exact)]
+    const codes: string[] = []
+    for (const [key, code] of Object.entries(LANG_MAP)) {
+        if (key.startsWith(q) && !codes.includes(code)) codes.push(code)
+    }
+    for (const [code, name] of Object.entries(LANGUAGE_NAMES)) {
+        if (name.toLowerCase().startsWith(q) && !codes.includes(code)) codes.push(code)
+    }
+    return codes.slice(0, limit).map(toSuggestion)
+}
+
+// What a comma separated preference like "en,eng,jpn,xyz" is understood as, in order
+export function describeLanguageList(value: string): { known: LanguageSuggestion[], unknown: string[] } {
+    const known: LanguageSuggestion[] = []
+    const unknown: string[] = []
+    for (const part of value.split(",").map(p => p.trim()).filter(Boolean)) {
+        if (part.toLowerCase() === "none") continue
+        const code = getLanguageCode(part)
+        if (code) {
+            if (!known.some(k => k.code === code)) known.push(toSuggestion(code))
+        } else {
+            unknown.push(part)
+        }
+    }
+    return { known, unknown }
 }
