@@ -1,6 +1,12 @@
 import { getServerBaseUrl } from "@/api/client/server-url"
 import { MKVParser_SubtitleEvent, MKVParser_TrackInfo } from "@/api/generated/types"
 import { VideoCorePgsRenderer } from "@/app/(main)/_features/video-core/video-core-pgs-renderer"
+import {
+    findRememberedTrack,
+    getRememberedSubtitlePick,
+    RememberedSubtitlePick,
+    sortByTypePreference,
+} from "@/app/(main)/_features/video-core/video-core-subtitle-pick"
 import { vc_getSubtitleStyle } from "@/app/(main)/_features/video-core/video-core-settings-menu"
 import { VideoCore_VideoPlaybackInfo, VideoCore_VideoSubtitleTrack, VideoCoreSettings } from "@/app/(main)/_features/video-core/video-core.atoms"
 import { logger } from "@/lib/helpers/debug"
@@ -733,6 +739,13 @@ Style: Default, Roboto Medium,24,&H00FFFFFF,&H000000FF,&H00000000,&H00000000,0,0
             return
         }
 
+        const remembered = getRememberedSubtitlePick(this.playbackInfo?.media?.id)
+        if (remembered?.off) {
+            subtitleLog.info("Subtitles were turned off for this show")
+            this.setNoTrack()
+            return
+        }
+
         if (tracks.length === 1) {
             subtitleLog.info("Only one track found, selecting it")
             await this.selectTrack(tracks[0].number)
@@ -740,7 +753,7 @@ Style: Default, Roboto Medium,24,&H00FFFFFF,&H000000FF,&H00000000,&H00000000,0,0
         }
 
         // Split preferred languages by comma and trim whitespace
-        const defaultTrackNumber = getDefaultSubtitleTrackNumber(this.settings, tracks)
+        const defaultTrackNumber = getDefaultSubtitleTrackNumber(this.settings, tracks, remembered)
         subtitleLog.info("Default subtitle track number",
             defaultTrackNumber,
             this.settings.preferredSubtitleLanguage,
@@ -1168,7 +1181,13 @@ Style: Default, Roboto Medium,24,&H00FFFFFF,&H000000FF,&H00000000,&H00000000,0,0
 export function getDefaultSubtitleTrackNumber(
     settings: VideoCoreSettings,
     _tracks: { label?: string, language?: string, number: number, forced?: boolean, default?: boolean }[] | null = null,
+    remembered?: RememberedSubtitlePick,
 ): number {
+    // The user's own pick for this show wins over the general preferences
+    if (remembered?.off) return NO_TRACK_NUMBER
+    const rememberedTrack = findRememberedTrack(_tracks ?? [], remembered)
+    if (rememberedTrack) return rememberedTrack.number
+
     // Split preferred languages by comma and trim whitespace
     const preferredLanguages = settings.preferredSubtitleLanguage
         .split(",")
@@ -1197,6 +1216,9 @@ export function getDefaultSubtitleTrackNumber(
         })
 
         if (foundTracks?.length) {
+            if (settings.preferredSubtitleType && settings.preferredSubtitleType !== "auto") {
+                return sortByTypePreference(foundTracks, settings.preferredSubtitleType)[0].number
+            }
             // Find default or forced track
             const defaultIndex = foundTracks.findIndex(t => t.forced)
             return foundTracks[defaultIndex >= 0 ? defaultIndex : 0].number
