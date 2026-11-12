@@ -39,6 +39,9 @@ import { NumberInput } from "@/components/ui/number-input"
 import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { TextInput } from "@/components/ui/text-input"
+import { __onlinestream_subtitlePreferenceByMediaAtom } from "@/app/(main)/onlinestream/_lib/onlinestream.atoms"
+import { VideoCoreLanguageField } from "@/app/(main)/_features/video-core/video-core-language-field"
+import { forgetSubtitlePicks, SubtitleTypePreference } from "@/app/(main)/_features/video-core/video-core-subtitle-pick"
 import { logger } from "@/lib/helpers/debug"
 import { upath } from "@/lib/helpers/upath"
 import { atom, useAtom, useAtomValue } from "jotai"
@@ -188,6 +191,9 @@ export function VideoCorePreferencesModal({ isWebPlayer }: { isWebPlayer: boolea
     const [editedSubLanguage, setEditedSubLanguage] = useState(settings.preferredSubtitleLanguage)
     const [editedAudioLanguage, setEditedAudioLanguage] = useState(settings.preferredAudioLanguage)
     const [editedSubsBlacklist, setEditedSubsBlacklist] = useState(settings.preferredSubtitleBlacklist)
+    const [editedSubType, setEditedSubType] = useState<SubtitleTypePreference>(settings.preferredSubtitleType ?? "auto")
+    const [forgetPicks, setForgetPicks] = useState(false)
+    const setOnlinestreamSubtitlePicks = useSetAtom(__onlinestream_subtitlePreferenceByMediaAtom)
     const [editedSubtitleDelay, setEditedSubtitleDelay] = useState(settings.subtitleDelay ?? 0)
     const [editedScreenshotDir, setEditedScreenshotDir] = useState(mediaPlayerSettings?.screenshotDir ?? "")
     const [preferences, setPreferences] = useAtom(mediaCorePreferencesAtom)
@@ -211,6 +217,8 @@ export function VideoCorePreferencesModal({ isWebPlayer }: { isWebPlayer: boolea
             setEditedSubLanguage(settings.preferredSubtitleLanguage)
             setEditedAudioLanguage(settings.preferredAudioLanguage)
             setEditedSubsBlacklist(settings.preferredSubtitleBlacklist)
+            setEditedSubType(settings.preferredSubtitleType ?? "auto")
+            setForgetPicks(false)
             setEditedSubtitleDelay(settings.subtitleDelay ?? 0)
             setEditedUseLibassRenderer(useLibassRenderer)
             setEditedScreenshotDir(mediaPlayerSettings?.screenshotDir ?? "")
@@ -250,10 +258,15 @@ export function VideoCorePreferencesModal({ isWebPlayer }: { isWebPlayer: boolea
             preferredSubtitleLanguage: editedSubLanguage,
             preferredAudioLanguage: editedAudioLanguage,
             preferredSubtitleBlacklist: editedSubsBlacklist,
+            preferredSubtitleType: editedSubType,
             subtitleDelay: editedSubtitleDelay,
             // subtitleCustomization: editedSubCustomization,
         }
         setSettings(newSettings)
+        if (forgetPicks) {
+            forgetSubtitlePicks()
+            setOnlinestreamSubtitlePicks({})
+        }
         setPreferences(current => ({ ...current, skipPatterns: editedSkipPatterns.trim() }))
         setUseLibassRenderer(editedUseLibassRenderer)
 
@@ -278,6 +291,7 @@ export function VideoCorePreferencesModal({ isWebPlayer }: { isWebPlayer: boolea
         setEditedSubLanguage(vc_initialSettings.preferredSubtitleLanguage)
         setEditedAudioLanguage(vc_initialSettings.preferredAudioLanguage)
         setEditedSubsBlacklist(vc_initialSettings.preferredSubtitleBlacklist)
+        setEditedSubType(vc_initialSettings.preferredSubtitleType ?? "auto")
         setEditedSubtitleDelay(vc_initialSettings.subtitleDelay)
         setEditedUseLibassRenderer(true)
         setEditedScreenshotDir(mediaPlayerSettings?.screenshotDir ?? "")
@@ -664,30 +678,49 @@ export function VideoCorePreferencesModal({ isWebPlayer }: { isWebPlayer: boolea
                     <div className="space-y-3">
                         <h3 className="text-lg font-semibold text-white">Defaults</h3>
                         <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-muted-foreground">
-                                    Preferred Subtitle Language
-                                </label>
-                                <TextInput
-                                    value={editedSubLanguage}
-                                    onValueChange={setEditedSubLanguage}
-                                    placeholder="eng,jpn,spa"
-                                    onKeyDown={(e) => e.stopPropagation()}
-                                    onInput={(e) => e.stopPropagation()}
-                                />
+                            <VideoCoreLanguageField
+                                label="Preferred Subtitle Language"
+                                value={editedSubLanguage}
+                                onValueChange={setEditedSubLanguage}
+                                placeholder="e.g. english"
+                            />
+                            <VideoCoreLanguageField
+                                label="Preferred Audio Language"
+                                value={editedAudioLanguage}
+                                onValueChange={setEditedAudioLanguage}
+                                placeholder="e.g. japanese"
+                            />
+                        </div>
+                        <p className="text-xs text-[--muted]">
+                            Type a language name or code. The first language found in the video is used, so put your favourite first.
+                        </p>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-muted-foreground">
+                                Subtitle Type
+                            </label>
+                            <div className="flex flex-wrap gap-2">
+                                {([
+                                    ["auto", "Automatic"],
+                                    ["full", "Full dialogue"],
+                                    ["signs", "Signs & Songs only"],
+                                ] as [SubtitleTypePreference, string][]).map(([value, text]) => (
+                                    <Button
+                                        key={value}
+                                        size="sm"
+                                        intent={editedSubType === value ? "primary" : "gray-outline"}
+                                        onClick={() => setEditedSubType(value)}
+                                    >
+                                        {text}
+                                    </Button>
+                                ))}
                             </div>
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-muted-foreground">
-                                    Preferred Audio Language
-                                </label>
-                                <TextInput
-                                    value={editedAudioLanguage}
-                                    onValueChange={setEditedAudioLanguage}
-                                    placeholder="jpn,eng,kor"
-                                    onKeyDown={(e) => e.stopPropagation()}
-                                    onInput={(e) => e.stopPropagation()}
-                                />
-                            </div>
+                            <p className="text-xs text-[--muted]">
+                                {editedSubType === "signs"
+                                    ? "Picks the track that only shows songs, signs and other text that isn't spoken in your language."
+                                    : editedSubType === "full"
+                                        ? "Picks the track that shows every line of dialogue."
+                                        : "Lets the video file decide which track comes first."}
+                            </p>
                         </div>
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-muted-foreground">
@@ -696,11 +729,23 @@ export function VideoCorePreferencesModal({ isWebPlayer }: { isWebPlayer: boolea
                             <TextInput
                                 value={editedSubsBlacklist}
                                 onValueChange={setEditedSubsBlacklist}
-                                placeholder="e.g. signs & songs,signs/songs"
+                                placeholder="e.g. commentary"
                                 onKeyDown={(e) => e.stopPropagation()}
                                 onInput={(e) => e.stopPropagation()}
-                                help="Subtitle tracks that will not be selected by default if they match the preferred lanauges. Separate multiple names with commas."
+                                help="Tracks whose name contains one of these words are never picked automatically. Separate words with commas."
                             />
+                        </div>
+                        <div className="space-y-1">
+                            <p className="text-sm text-[--muted]">
+                                A track you pick in the player is remembered for that show and used again on the next episodes.
+                            </p>
+                            <Button
+                                size="sm"
+                                intent={forgetPicks ? "alert-subtle" : "gray-outline"}
+                                onClick={() => setForgetPicks(p => !p)}
+                            >
+                                {forgetPicks ? "Forgotten on Save" : "Forget per-show picks"}
+                            </Button>
                         </div>
                     </div>
 
