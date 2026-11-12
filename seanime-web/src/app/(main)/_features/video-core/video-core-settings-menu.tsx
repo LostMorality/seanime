@@ -2,6 +2,7 @@ import { useOpenInExplorer } from "@/api/hooks/explorer.hooks"
 import { vc_subtitleManager } from "@/app/(main)/_features/video-core/video-core"
 import { vc_mediaCaptionsManager } from "@/app/(main)/_features/video-core/video-core"
 import { anime4kOptions, getAnime4KOptionByValue, vc_anime4kOption } from "@/app/(main)/_features/video-core/video-core-anime-4k"
+import { useIsHdrDisplay } from "@/app/(main)/_features/video-core/video-core-hdr-gamma"
 import { Anime4KOption } from "@/app/(main)/_features/video-core/video-core-anime-4k-manager"
 import { vc_menuOpen } from "@/app/(main)/_features/video-core/video-core-atoms"
 import { vc_menuSectionOpen } from "@/app/(main)/_features/video-core/video-core-atoms"
@@ -321,6 +322,7 @@ export function VideoCoreSettingsMenu() {
         mediaCaptionsManager?.updateSettings(newSettings)
     }
 
+    const isHdrDisplay = useIsHdrDisplay()
     const handleVideoEnhancementChange = (videoEnhancement: VideoCoreSettings["videoEnhancement"]): void => {
         setSettings({ ...settings, videoEnhancement })
     }
@@ -715,6 +717,19 @@ export function VideoCoreSettingsMenu() {
                                 Reset to defaults
                             </Button>
                         </div>
+                        <Switch
+                            label="HDR gamma fix"
+                            side="right"
+                            fieldClass="hover:bg-transparent hover:border-transparent px-0 ml-0 w-full mt-3"
+                            size="sm"
+                            value={settings.videoEnhancement.hdrGammaFix}
+                            onValueChange={(hdrGammaFix) => handleVideoEnhancementChange({ ...settings.videoEnhancement, hdrGammaFix })}
+                        />
+                        <p className="text-[--muted] text-sm">
+                            {isHdrDisplay
+                                ? "With HDR on, Windows shows dark scenes greyer than intended. This restores the original shadows."
+                                : "Only applies when the display is in HDR mode."}
+                        </p>
                     </VideoCoreMenuOption>
                     <VideoCoreMenuOption title="Player Appearance" icon={LuPaintbrush}>
                         <Switch
