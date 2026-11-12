@@ -23,6 +23,9 @@ import { LuCaptions, LuPaintbrush } from "react-icons/lu"
 export type VideoCoreSubtitleSelection = {
     language?: string
     label?: string
+    // Extra details so the same track can be found again on the next episode (only used by the per-show memory)
+    forced?: boolean
+    sameLabelIndex?: number
 } | null
 
 export function VideoCoreSubtitleMenu({ inline, onPreferenceChange }: {
@@ -175,9 +178,12 @@ export function VideoCoreSubtitleMenu({ inline, onPreferenceChange }: {
                         }
                         const track = activeTracks.find(track => track.number === value)
                         if (track) {
+                            const sameLabel = activeTracks.filter(t => (t.label ?? "") === (track.label ?? ""))
                             onPreferenceChange?.({
-                                language: track.language,
+                                language: track.language || ("languageIETF" in track ? track.languageIETF : undefined),
                                 label: track.label,
+                                forced: "forced" in track ? !!track.forced : undefined,
+                                sameLabelIndex: sameLabel.indexOf(track),
                             })
                         }
                     }}
