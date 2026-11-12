@@ -1,5 +1,6 @@
 import { vc_getCaptionStyle } from "@/app/(main)/_features/video-core/video-core-settings-menu"
 import { getDefaultSubtitleTrackNumber } from "@/app/(main)/_features/video-core/video-core-subtitles"
+import { getRememberedSubtitlePick } from "@/app/(main)/_features/video-core/video-core-subtitle-pick"
 import { VideoCore_VideoSubtitleTrack, VideoCoreSettings } from "@/app/(main)/_features/video-core/video-core.atoms"
 import { logger } from "@/lib/helpers/debug"
 import { detectTrackLanguage } from "@/lib/helpers/language"
@@ -34,6 +35,8 @@ export type MediaCaptionsManagerOptions = {
     fetchAndConvertToVTT: FetchAndConvertToVTT
     sendTranslateRequest: (text?: string, track?: VideoCore_VideoSubtitleTrack) => void
     translateTargetLang: string | null
+    // AniList id of the show, used to re-apply the subtitle track the user picked on earlier episodes
+    mediaId?: number
 }
 
 type LoadedTrack = {
@@ -105,6 +108,7 @@ export class MediaCaptionsManager extends EventTarget {
     private currentTrackIndex: number = NO_TRACK_IDX
     private timeUpdateListener: (() => void) | null = null
     private readonly settings: VideoCoreSettings
+    private readonly mediaId?: number
     private captionCustomization: VideoCoreSettings["captionCustomization"]
     private subtitleDelay = 0
 
@@ -125,6 +129,7 @@ export class MediaCaptionsManager extends EventTarget {
         this.videoElement = options.videoElement
         this.tracks = options.tracks
         this.settings = options.settings
+        this.mediaId = options.mediaId
         this.captionCustomization = options.settings.captionCustomization
         this.subtitleDelay = options.settings.subtitleDelay ?? 0
         this.fetchAndConvertToVTT = options.fetchAndConvertToVTT
@@ -652,7 +657,9 @@ export class MediaCaptionsManager extends EventTarget {
         }
         // When the first track is loaded, start rendering captions
         // Select default track
-        const defaultTrackNumber = getDefaultSubtitleTrackNumber(this.settings, this.tracks.map((t, idx) => ({ ...t, number: idx })))
+        const defaultTrackNumber = getDefaultSubtitleTrackNumber(this.settings,
+            this.tracks.map((t, idx) => ({ ...t, number: idx })),
+            getRememberedSubtitlePick(this.mediaId))
         await this.selectTrack(defaultTrackNumber)
         // Setup time update listener
         this.timeUpdateListener = () => {
