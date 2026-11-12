@@ -19,6 +19,7 @@ export type {
 export type VideoCoreSettings = {
     preferredSubtitleLanguage: string
     preferredSubtitleBlacklist: string
+    preferredSubtitleType?: "auto" | "full" | "signs" // which track to prefer when a language has several
     preferredAudioLanguage: string
     subtitleDelay: number // in seconds
     // Video enhancement settings
@@ -27,6 +28,7 @@ export type VideoCoreSettings = {
         contrast: number      // 0.8 - 1.2 (1.0 = default)
         saturation: number    // 0.8 - 1.3 (1.0 = default)
         brightness: number    // 0.9 - 1.1 (1.0 = default)
+        hdrGammaFix: boolean  // undo the lifted shadows of SDR video on Windows HDR, only applied on HDR displays
     }
     // Subtitle customization settings (ASS)
     subtitleCustomization: {
@@ -54,6 +56,7 @@ export type VideoCoreSettings = {
 export const vc_initialSettings: VideoCoreSettings = {
     preferredSubtitleLanguage: "en,eng,english",
     preferredSubtitleBlacklist: "",
+    preferredSubtitleType: "auto",
     preferredAudioLanguage: "jpn,jp,jap,japanese",
     subtitleDelay: 0,
     videoEnhancement: {
@@ -61,6 +64,7 @@ export const vc_initialSettings: VideoCoreSettings = {
         contrast: 1.05,
         saturation: 1.1,
         brightness: 1.02,
+        hdrGammaFix: true,
     },
     subtitleCustomization: {
         enabled: false,
