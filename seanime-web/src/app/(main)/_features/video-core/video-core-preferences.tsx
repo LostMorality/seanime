@@ -21,6 +21,7 @@ import {
     vc_defaultKeybindings,
     vc_initialSettings,
     vc_keybindingsAtom,
+    vc_pauseOnMinimizeAtom,
     vc_settings,
     vc_showStatsForNerdsAtom,
     vc_storedMutedAtom,
@@ -39,6 +40,7 @@ import { NumberInput } from "@/components/ui/number-input"
 import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { TextInput } from "@/components/ui/text-input"
+import { __isElectronDesktop__ } from "@/types/constants"
 import { __onlinestream_subtitlePreferenceByMediaAtom } from "@/app/(main)/onlinestream/_lib/onlinestream.atoms"
 import { VideoCoreLanguageField } from "@/app/(main)/_features/video-core/video-core-language-field"
 import { forgetSubtitlePicks, SubtitleTypePreference } from "@/app/(main)/_features/video-core/video-core-subtitle-pick"
@@ -177,6 +179,8 @@ export function VideoCorePreferencesModal({ isWebPlayer }: { isWebPlayer: boolea
     const [editedKeybindings, setEditedKeybindings] = useState<VideoCoreKeybindings>(keybindings)
     const [useLibassRenderer, setUseLibassRenderer] = useAtom(vc_useLibassRendererAtom)
     const [editedUseLibassRenderer, setEditedUseLibassRenderer] = useState(useLibassRenderer)
+    const [pauseOnMinimize, setPauseOnMinimize] = useAtom(vc_pauseOnMinimizeAtom)
+    const [editedPauseOnMinimize, setEditedPauseOnMinimize] = useState(pauseOnMinimize)
 
     const [recordingKey, setRecordingKey] = useState<string | null>(null)
 
@@ -221,11 +225,12 @@ export function VideoCorePreferencesModal({ isWebPlayer }: { isWebPlayer: boolea
             setForgetPicks(false)
             setEditedSubtitleDelay(settings.subtitleDelay ?? 0)
             setEditedUseLibassRenderer(useLibassRenderer)
+            setEditedPauseOnMinimize(pauseOnMinimize)
             setEditedScreenshotDir(mediaPlayerSettings?.screenshotDir ?? "")
             setEditedSkipPatterns(preferences.skipPatterns)
             // setEditedSubCustomization(settings.subtitleCustomization || vc_initialSettings.subtitleCustomization)
         }
-    }, [open, keybindings, settings, useLibassRenderer, mediaPlayerSettings, preferences.skipPatterns])
+    }, [open, keybindings, settings, useLibassRenderer, pauseOnMinimize, mediaPlayerSettings, preferences.skipPatterns])
 
     const handleKeyRecord = (actionKey: keyof VideoCoreKeybindings) => {
         setRecordingKey(actionKey)
@@ -269,6 +274,7 @@ export function VideoCorePreferencesModal({ isWebPlayer }: { isWebPlayer: boolea
         }
         setPreferences(current => ({ ...current, skipPatterns: editedSkipPatterns.trim() }))
         setUseLibassRenderer(editedUseLibassRenderer)
+        setPauseOnMinimize(editedPauseOnMinimize)
 
         const currentMediaPlayer = serverStatus?.settings?.mediaPlayer
         if (currentMediaPlayer) {
@@ -294,6 +300,7 @@ export function VideoCorePreferencesModal({ isWebPlayer }: { isWebPlayer: boolea
         setEditedSubType(vc_initialSettings.preferredSubtitleType ?? "auto")
         setEditedSubtitleDelay(vc_initialSettings.subtitleDelay)
         setEditedUseLibassRenderer(true)
+        setEditedPauseOnMinimize(true)
         setEditedScreenshotDir(mediaPlayerSettings?.screenshotDir ?? "")
         setEditedSkipPatterns(mediaCoreDefaultPreferences.skipPatterns)
         // setEditedSubCustomization(vc_initialSettings.subtitleCustomization)
@@ -384,6 +391,13 @@ export function VideoCorePreferencesModal({ isWebPlayer }: { isWebPlayer: boolea
                             help="Configure the directory where screenshots will be saved"
                             error={!isAbsolute ? "Must be an absolute path" : ""}
                         />
+                        {__isElectronDesktop__ && <Switch
+                            side="right"
+                            label="Pause when minimized"
+                            value={editedPauseOnMinimize}
+                            onValueChange={setEditedPauseOnMinimize}
+                            help="Pauses the video when the app is minimized or hidden in the tray. Picture-in-picture keeps playing."
+                        />}
 
                         <div className="flex items-center justify-between pt-6">
                             <Button
